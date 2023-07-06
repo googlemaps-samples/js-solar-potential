@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "sideEffects": false,
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -11,26 +10,31 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "deck.gl": "^8.9.18",
-    "flowbite": "^1.6.5",
-    "flowbite-react": "^0.4.7",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.11.16",
+    "@mui/material": "^5.13.5",
+    "autosuggest-highlight": "^3.3.4",
+    "cesium": "^1.106.1",
+    "geotiff": "^2.0.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-icons": "^4.9.0"
+    "resium": "^1.16.1"
   },
   "devDependencies": {
+    "@googlemaps/js-api-loader": "^1.16.2",
+    "@types/autosuggest-highlight": "^3.2.0",
+    "@types/google.maps": "^3.53.4",
     "@types/react": "^18.0.37",
     "@types/react-dom": "^18.0.11",
     "@typescript-eslint/eslint-plugin": "^5.59.0",
     "@typescript-eslint/parser": "^5.59.0",
     "@vitejs/plugin-react-swc": "^3.0.0",
-    "autoprefixer": "^10.4.14",
     "eslint": "^8.38.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.3.4",
-    "postcss": "^8.4.24",
-    "tailwindcss": "^3.3.2",
     "typescript": "^5.0.2",
-    "vite": "^4.3.9"
+    "vite": "^4.3.9",
+    "vite-plugin-cesium": "^1.2.22"
   }
 }
