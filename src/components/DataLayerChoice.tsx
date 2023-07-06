@@ -3,7 +3,7 @@ import { DataLayer, LayerId, layerChoices } from "../services/solar/dataLayers"
 
 interface Props {
   layerId: LayerId
-  layer: DataLayer
+  layer: DataLayer | null
   month: { get: number, set: (x: number) => void }
   day: { get: number, set: (x: number) => void }
   hour: { get: number, set: (x: number) => void }

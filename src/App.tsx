@@ -4,37 +4,25 @@ import { Entity } from 'resium';
 
 import CssBaseline from '@mui/material/CssBaseline';
 import {
-  Autocomplete,
-  Backdrop,
   Box,
   Card,
   CardContent,
-  Divider,
   Drawer,
-  FormControlLabel,
-  LinearProgress,
   Skeleton,
-  Slider,
-  SpeedDial,
-  SpeedDialAction,
-  SpeedDialIcon,
-  Switch,
-  TextField,
 } from '@mui/material';
 
 
-import { LatLng, LatLngBox } from './common';
-import { createSolarPanelEntity, degreesToMeters, metersToDegrees, normalize, renderImage, renderImagePalette, solarPanelPolygon } from './utils';
+import { LatLng } from './common';
+import { createSolarPanelEntity, degreesToMeters } from './utils';
 
 import InfoCard from './components/InfoCard';
 import Map from './components/Map';
 import SearchBar from './components/SearchBar';
 import Show from './components/Show';
 
-import { BuildingInsightsResponse, SolarPanel, SolarPanelConfig, findClosestBuilding } from './services/solar/buildingInsights';
-import { ImagePixels, getDataLayers, DataLayersResponse, LayerId, downloadLayer, DataLayerPixels, layerChoices } from './services/solar/dataLayers';
+import { BuildingInsightsResponse, SolarPanel, findClosestBuilding } from './services/solar/buildingInsights';
+import { DataLayer, LayerId, downloadLayer, layerChoices } from './services/solar/dataLayers';
 import { Typography } from '@mui/material';
-import { TypedArray } from 'geotiff';
 import DataLayerChoice from './components/DataLayerChoice';
 
 const cesiumApiKey = import.meta.env.VITE_CESIUM_API_KEY
@@ -83,7 +71,7 @@ export default function App() {
   const [buildingInsights, setBuildingInsights] = useState<BuildingInsightsResponse | null>(null)
   const [solarPanel, setSolarPanel] = useState<SolarPanel | null>(null)
   const [solarPanels, setSolarPanels] = useState<SolarPanel[]>([])
-  const [layer, setLayer] = useState<DataLayerPixels | null>(null)
+  const [layer, setLayer] = useState<DataLayer | null>(null)
 
   // Inputs from the UI.
   const [inputWattsPerMonth, setInputWattsPerMonth] = useState<number>(0)
@@ -130,9 +118,8 @@ export default function App() {
     setLayer(layer)
   }
 
-  function renderDataLayer(layer: DataLayerPixels): HTMLCanvasElement {
+  function renderDataLayer(layer: DataLayer): HTMLCanvasElement {
     return layerChoices[inputDataLayer].render({
-      canvas: document.getElementById('data-layer') as HTMLCanvasElement,
       layer: layer,
       mask: inputMask
         ? layer.mask
@@ -146,7 +133,6 @@ export default function App() {
   return <Box sx={{ display: 'flex' }}>
     <CssBaseline />
 
-    {/* Content area */}
     <Box component="main" sx={{ flexGrow: 1, p: 0 }}>
       <Map
         ref={mapRef}
@@ -177,7 +163,6 @@ export default function App() {
             : null
         }
 
-        <canvas id='data-layer'></canvas>
         { // Data layer
           layer ?
             <Entity
@@ -197,7 +182,6 @@ export default function App() {
       </Map>
     </Box>
 
-    {/* Side bar */}
     <Drawer
       variant="permanent"
       anchor="right"
@@ -246,7 +230,6 @@ export default function App() {
           />
         </Box>
 
-        {/* Solar insights */}
         <Card variant='outlined'>
           <CardContent>
             <Typography variant='subtitle1'>Building insights</Typography>

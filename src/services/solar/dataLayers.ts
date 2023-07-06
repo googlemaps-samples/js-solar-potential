@@ -41,7 +41,6 @@ interface LayerChoice {
   label: string
   urls: (response: DataLayersResponse) => string[]
   render: (args: {
-    canvas: HTMLCanvasElement,
     layer: DataLayer,
     mask: ImagePixels,
     month?: number,
@@ -58,12 +57,11 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   dsm: {
     label: 'Digital Surface Map (DSM)',
     urls: response => [response.dsmUrl],
-    render: ({ canvas, layer, mask }) => {
+    render: ({ layer, mask }) => {
       const minValue = layer.images[0].bands[0].valueOf().reduce(
         (x: number, y: number) => Math.min(x, y),
         Number.POSITIVE_INFINITY)
       return renderImagePalette({
-        canvas: canvas,
         data: layer.images[0],
         mask: mask,
         palette: dsmPalette,
@@ -75,8 +73,7 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   rgb: {
     label: 'Aerial image (RGB)',
     urls: response => [response.rgbUrl],
-    render: ({ canvas, layer, mask }) => renderImage({
-      canvas: canvas,
+    render: ({ layer, mask }) => renderImage({
       rgb: layer.images[0],
       mask: mask,
     }),
@@ -84,8 +81,7 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   annualFlux: {
     label: 'Annual flux',
     urls: response => [response.annualFluxUrl],
-    render: ({ canvas, layer, mask }) => renderImagePalette({
-      canvas: canvas,
+    render: ({ layer, mask }) => renderImagePalette({
       data: layer.images[0],
       mask: mask,
       palette: fluxPalette,
@@ -95,8 +91,7 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   monthlyFlux: {
     label: 'Monthly flux',
     urls: response => [response.monthlyFluxUrl],
-    render: ({ canvas, layer, mask, month }) => renderImagePalette({
-      canvas: canvas,
+    render: ({ layer, mask, month }) => renderImagePalette({
       data: {
         ...layer.images[0],
         bands: [layer.images[0].bands[month!]],
@@ -109,8 +104,7 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   hourlyShade: {
     label: 'Hourly shade',
     urls: response => response.hourlyShadeUrls,
-    render: ({ canvas, layer, mask, month, day, hour }) => renderImagePalette({
-      canvas: canvas,
+    render: ({ layer, mask, month, day, hour }) => renderImagePalette({
       data: {
         ...layer.images[month!],
         bands: [
@@ -173,12 +167,9 @@ async function downloadGeoTIFF(url: string, apiKey: string): Promise<ImagePixels
   }
 }
 
-function renderImage({ canvas, rgb, mask }: {
-  canvas: HTMLCanvasElement,
-  rgb: ImagePixels,
-  mask: ImagePixels
-}) {
+function renderImage({ rgb, mask }: { rgb: ImagePixels, mask: ImagePixels }) {
   // https://www.w3schools.com/tags/canvas_createimagedata.asp
+  const canvas = document.createElement('canvas')
   canvas.width = mask.width
   canvas.height = mask.height
 
@@ -203,7 +194,6 @@ function renderImage({ canvas, rgb, mask }: {
 }
 
 function renderImagePalette(args: {
-  canvas: HTMLCanvasElement,
   data: ImagePixels,
   mask: ImagePixels,
   palette?: string[],
@@ -236,7 +226,6 @@ function renderImagePalette(args: {
   }).map(Math.round)
 
   return renderImage({
-    canvas: args.canvas,
     rgb: {
       width: args.data.width,
       height: args.data.height,
