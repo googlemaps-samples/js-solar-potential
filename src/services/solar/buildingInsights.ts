@@ -43,7 +43,7 @@ export interface SizeAndSunshineStats {
 export interface RoofSegmentSizeAndSunshineStats {
   pitchDegrees: number
   azimuthDegrees: number
-  stats: SizeAndSunshineStats[]
+  stats: SizeAndSunshineStats
   center: LatLng
   boundingBox: LatLngBox
   planeHeightAtCenterMeters: number

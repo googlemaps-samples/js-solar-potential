@@ -58,6 +58,7 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
     label: 'Digital Surface Map (DSM)',
     urls: response => [response.dsmUrl],
     render: ({ layer, mask }) => {
+      // @ts-ignore
       const minValue = layer.images[0].bands[0].valueOf().reduce(
         (x: number, y: number) => Math.min(x, y),
         Number.POSITIVE_INFINITY)
@@ -132,12 +133,17 @@ export async function getDataLayers(location: LatLng, radius_meters: number, api
 }
 
 export async function downloadLayer(args: {
+  response: DataLayersResponse,
   layerId: LayerId,
   sizeMeters: number,
   center: LatLng,
   googleMapsApiKey: string
 }): Promise<DataLayer> {
+  console.log(`GET ${args.layerId} `)
   const response = await getDataLayers(args.center, args.sizeMeters / 2, args.googleMapsApiKey)
+  if ('error' in response) {
+    throw response.error
+  }
   const choice = layerChoices[args.layerId]
   const requests = choice.urls(response).map(url => downloadGeoTIFF(url, args.googleMapsApiKey))
 

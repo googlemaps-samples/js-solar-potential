@@ -1,121 +1,162 @@
-import { Fragment, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import * as Cesium from 'cesium';
 import { Entity } from 'resium';
 
 import CssBaseline from '@mui/material/CssBaseline';
 import {
   Box,
-  Card,
-  CardContent,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Drawer,
+  FormControlLabel,
+  Grid,
+  Paper,
   Skeleton,
+  Slider,
+  Stack,
+  Switch,
 } from '@mui/material';
 
+import { degreesToMeters, solarPanelPolygon } from './utils';
 
-import { LatLng } from './common';
-import { createSolarPanelEntity, degreesToMeters } from './utils';
-
-import InfoCard from './components/InfoCard';
 import Map from './components/Map';
 import SearchBar from './components/SearchBar';
 import Show from './components/Show';
 
-import { BuildingInsightsResponse, SolarPanel, findClosestBuilding } from './services/solar/buildingInsights';
-import { DataLayer, LayerId, downloadLayer, layerChoices } from './services/solar/dataLayers';
+import { BuildingInsightsResponse, findClosestBuilding } from './services/solar/buildingInsights';
+import { DataLayer, LayerId, downloadLayer, getDataLayers, layerChoices } from './services/solar/dataLayers';
 import { Typography } from '@mui/material';
 import DataLayerChoice from './components/DataLayerChoice';
+import { Loader } from '@googlemaps/js-api-loader';
+import { LatLng } from './common';
+import SolarDetails from './components/SolarDetails';
 
 const cesiumApiKey = import.meta.env.VITE_CESIUM_API_KEY
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
-/* 
-TODO
-- Add data layers with time of day slider
-- Add icon for roof pitch and azimuth
-- Add icon to show the energy produced with respect with the highest panel
-- Color the selected solar panel
-- Add list of predefined locations
-- Color panels by energy produced
-- Add slider to adjust energy produced to match average household per state
-*/
+const sidebarWidth = 400
 
-const SIDEBAR_WIDTH = {
-  xs: '380px',
-  lg: '460px',
-};
-
-function getSolarInsights(buildingInsights: BuildingInsightsResponse) {
-  return {
-    'Carbon offset factor': `${Math.round(buildingInsights.solarPotential.carbonOffsetFactorKgPerMwh)} Kg/MWh`,
-    'Maximum sunshine': `${Math.round(buildingInsights.solarPotential.maxSunshineHoursPerYear)} hr/year`,
-    'Maximum array': `${buildingInsights.solarPotential.solarPanels.length} panels`,
-    'Imagery date': buildingInsights.imageryDate,
-  }
-}
-
-function getSolarPanelDetails(buildingInsights: BuildingInsightsResponse, panel: SolarPanel) {
-  const roof = buildingInsights.solarPotential.roofSegmentStats[panel.segmentIndex ?? 0]
-  return {
-    'Estimated energy': `${Math.round(panel.yearlyEnergyDcKwh)} KWh/year`,
-    'Orientation': panel.orientation == 'LANDSCAPE' ? 'Landscape' : 'Portrait',
-    'Roof pitch': `${Math.round(roof.pitchDegrees)}°`,
-    'Roof azimuth': `${Math.round(roof.azimuthDegrees)}°`,
-  }
-}
-
+// https://materialui.co/colors
+const colors = [
+  '#E53935',  // 600 Red
+  '#1E88E5',  // 600 Blue
+  '#43A047',  // 600 Green
+  '#FB8C00',  // 600 Orange
+  '#8E24AA',  // 600 Purple
+  '#FDD835',  // 600 Yellow
+  '#3949AB',  // 600 Indigo
+  '#B71C1C',  // 900 Red
+  '#0D47A1',  // 900 Blue
+  '#1B5E20',  // 900 Green
+  '#E65100',  // 900 Orange
+  '#4A148C',  // 900 Purple
+  '#1A237E',  // 900 Indigo
+  '#E57373',  // 300 Red
+  '#7986CB',  // 300 Indigo
+  '#81C784',  // 300 Green
+  '#FFB74D',  // 300 Orange
+  '#BA68C8',  // 300 Purple
+]
 
 export default function App() {
   const mapRef = useRef<{ cesiumElement: Cesium.Viewer }>(null)
 
   // Information to display in the UI.
-  const [buildingInsights, setBuildingInsights] = useState<BuildingInsightsResponse | null>(null)
-  const [solarPanel, setSolarPanel] = useState<SolarPanel | null>(null)
-  const [solarPanels, setSolarPanels] = useState<SolarPanel[]>([])
+  const [building, setBuildingInsights] = useState<BuildingInsightsResponse | null>(null)
   const [layer, setLayer] = useState<DataLayer | null>(null)
+  const [removeOrbit, setRemoveOrbit] = useState<any>(() => { })
+  const [error, setError] = useState<any>(null)
 
   // Inputs from the UI.
-  const [inputWattsPerMonth, setInputWattsPerMonth] = useState<number>(0)
-  const [inputDataLayer, setInputDataLayer] = useState<LayerId>('dsm')
+  const [inputMonthlyKwh, setInputMonthlyKwh] = useState<number>(1000)
+  const [inputDataLayer, setInputDataLayer] = useState<LayerId>('monthlyFlux')
   const [inputMonth, setInputMonth] = useState<number>(3)
   const [inputDay, setInputDay] = useState<number>(14)
   const [inputHour, setInputHour] = useState<number>(15)
   const [inputMask, setInputMask] = useState<boolean>(true)
+  const [inputShowPanelCounts, setInputShowPanelCounts] = useState<boolean>(false)
 
+  const [openPanelsInfo, setOpenPanelsInfo] = useState(false);
+
+  const googleMapsLoader = new Loader({ apiKey: googleMapsApiKey })
+  const elevationLoader = googleMapsLoader
+    .importLibrary('core')
+    .then(() => new google.maps.ElevationService())
+
+  const solarConfigs = building?.solarPotential?.solarPanelConfigs
+  const solarConfigIdx = solarConfigs?.findIndex(config => config.yearlyEnergyDcKwh >= inputMonthlyKwh * 12) ?? 0
 
   async function showSolarPotential(point: LatLng) {
-    const viewer = mapRef?.current?.cesiumElement!
-    viewer.entities.removeAll()
     setBuildingInsights(null)
     setLayer(null)
+    setError(null)
 
-    // Fetch the building insights from the Solar API.
-    const buildingInsights = await findClosestBuilding(point, googleMapsApiKey)
-    setBuildingInsights(buildingInsights)
+    const buildingPromise = findClosestBuilding(point, googleMapsApiKey)
+    const elevationPromise = elevationLoader
+      .then(service => service.getElevationForLocations({
+        locations: [{ lat: point.latitude, lng: point.longitude }]
+      }))
 
-    // Set the solar panels on the map.
-    const solarConfigNum = 0 // TODO: calculate from wattsPerMonth
-    const solarPanelConfig = buildingInsights.solarPotential.solarPanelConfigs[solarConfigNum]
-    setSolarPanels(buildingInsights.solarPotential.solarPanels.slice(0, solarPanelConfig.panelsCount))
+    const building = await buildingPromise
+    if ('error' in building) {
+      console.error(building.error)
+      return setError(building.error)
+    }
+    setBuildingInsights(building)
 
-    // Set the data layer on the map.
-    showDataLayer(buildingInsights, inputDataLayer)
+    const viewer = mapRef?.current?.cesiumElement!
+    const location = Cesium.Cartesian3.fromDegrees(
+      building.center.longitude,
+      building.center.latitude,
+      (await elevationPromise).results[0].elevation * 0.7,
+    )
+    const offset = new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-30), 60)
+    viewer.camera.flyToBoundingSphere(
+      new Cesium.BoundingSphere(location),
+      {
+        offset: offset,
+        complete: () => {
+          // Lock the camera onto a point.
+          viewer.scene.camera.lookAtTransform(
+            Cesium.Transforms.eastNorthUpToFixedFrame(location),
+            offset,
+          )
+          // Orbit around this point.
+          function orbit(_) {
+            viewer.scene.camera.rotateRight(-0.0002)
+          }
+          try {
+            removeOrbit()
+          } catch (e) { }
+          const unsubscribe = viewer.clock.onTick.addEventListener(orbit)
+          setRemoveOrbit(() => unsubscribe)
+        }
+      }
+    )
+
+    showDataLayer(building, inputDataLayer)
   }
 
-  async function showDataLayer(buildingInsights: BuildingInsightsResponse, inputDataLayer: LayerId) {
-    setLayer(null)
-
-    const box = buildingInsights.boundingBox
-    const layer = await downloadLayer({
-      layerId: inputDataLayer,
-      sizeMeters: Math.ceil(degreesToMeters(Math.max(
-        box.ne.latitude - box.sw.latitude,
-        box.ne.longitude - box.sw.longitude,
-      ))),
-      center: buildingInsights.center,
+  async function showDataLayer(building: BuildingInsightsResponse, layerId: LayerId) {
+    const sizeMeters = Math.ceil(degreesToMeters(Math.max(
+      building.boundingBox.ne.latitude - building.boundingBox.sw.latitude,
+      building.boundingBox.ne.longitude - building.boundingBox.sw.longitude,
+    )))
+    const response = await getDataLayers(building.center, sizeMeters / 2, googleMapsApiKey)
+    if ('error' in response) {
+      console.error(response.error)
+      return setError(response.error)
+    }
+    setLayer(await downloadLayer({
+      response: response,
+      layerId: layerId,
+      sizeMeters: sizeMeters,
+      center: building.center,
       googleMapsApiKey: googleMapsApiKey,
-    })
-
-    setLayer(layer)
+    }))
   }
 
   function renderDataLayer(layer: DataLayer): HTMLCanvasElement {
@@ -130,55 +171,184 @@ export default function App() {
     })
   }
 
+  const mapRoofSegmentPins = inputShowPanelCounts && building && solarConfigs
+    ? solarConfigs[solarConfigIdx].roofSegmentSummaries
+      .map((segment, i) => {
+        const viewer = mapRef?.current?.cesiumElement!
+        const roof = building.solarPotential.roofSegmentStats[segment.segmentIndex ?? 0]
+        const pinBuilder = new Cesium.PinBuilder()
+        const height = viewer.scene.sampleHeight(Cesium.Cartographic.fromDegrees(roof.center.longitude, roof.center.latitude))
+        const color = colors[i % colors.length]
+        return <Entity
+          key={i}
+          position={Cesium.Cartesian3.fromDegrees(roof.center.longitude, roof.center.latitude, height)}
+          billboard={{
+            image: pinBuilder.fromText(segment.panelsCount.toString(), Cesium.Color.fromCssColorString(color), 50).toDataURL(),
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          }}
+        />
+      })
+    : null
+
+  const mapSolarPanelEntities = building && solarConfigs
+    ? building.solarPotential.solarPanels
+      .slice(0, solarConfigs[solarConfigIdx].panelsCount)
+      .map((panel, i) => {
+        const roofSegment = building.solarPotential.roofSegmentStats[panel.segmentIndex ?? 0]
+        return <Entity
+          key={i}
+          polyline={{
+            positions: solarPanelPolygon(
+              panel,
+              building.solarPotential.panelWidthMeters,
+              building.solarPotential.panelHeightMeters,
+              roofSegment.azimuthDegrees ?? 0,
+            ),
+            clampToGround: true,
+            material: Cesium.Color.BLUE,
+            width: 4,
+            zIndex: 1,
+          }}
+        />
+      })
+    : null
+
+  const mapDataLayerEntity = layer
+    ? <Entity
+      rectangle={{
+        coordinates: Cesium.Rectangle.fromDegrees(
+          layer.west, layer.south,
+          layer.east, layer.north,
+        ),
+        material: new Cesium.ImageMaterialProperty({
+          image: renderDataLayer(layer),
+          transparent: true,
+        })
+      }}
+    />
+    : null
+
+  const dataLayerChoice = building
+    ? <Paper elevation={2}>
+      <Box p={2}>
+        <DataLayerChoice
+          layerId={inputDataLayer}
+          layer={layer}
+          month={{ get: inputMonth, set: setInputMonth }}
+          day={{ get: inputDay, set: setInputDay }}
+          hour={{ get: inputHour, set: setInputHour }}
+          mask={{ get: inputMask, set: setInputMask }}
+          onChange={layerId => {
+            if (!error && inputDataLayer != layerId) {
+              setLayer(null)
+              setInputDataLayer(layerId)
+              showDataLayer(building, layerId)
+            }
+          }}
+        />
+      </Box>
+    </Paper>
+    : <Skeleton variant='rounded' height={120} />
+
+  const solarConfigurationSummary = solarConfigs && solarConfigs
+    ? <Paper>
+      <Box p={2}>
+        <Typography variant='subtitle1'>Solar configuration</Typography>
+        <Show data={{
+          'Config number': `${solarConfigIdx} (out of ${solarConfigs.length})`,
+          'Monthly energy':
+            <Stack direction='row' pt={3} spacing={1}>
+              <Slider
+                value={Math.round(solarConfigs[solarConfigIdx].yearlyEnergyDcKwh / 12)}
+                min={Math.floor(solarConfigs[0].yearlyEnergyDcKwh / 12)}
+                max={Math.floor(solarConfigs[solarConfigs.length - 1].yearlyEnergyDcKwh / 12)}
+                valueLabelDisplay="on"
+                onChange={(_, monthlyKwh) => setInputMonthlyKwh(monthlyKwh as number)}
+                sx={{ width: 140 }}
+              />,
+              <Typography>KWh</Typography>
+            </Stack>,
+          'Panels count': `${solarConfigs[solarConfigIdx].panelsCount} panels`,
+        }} />
+        <FormControlLabel
+          control={<Switch
+            value={inputShowPanelCounts}
+            onChange={(_, checked) => setInputShowPanelCounts(checked)}
+          />}
+          label="Show number of panels"
+        />
+      </Box >
+    </Paper>
+    : <Skeleton variant='rounded' height={160} />
+
+  const buildingInsightsSummary = building
+    ? <Paper elevation={2}>
+      <Box p={2}>
+        <Typography variant='subtitle1'>Building insights</Typography>
+        <Show data={{
+          'Carbon offset factor': `${building.solarPotential.carbonOffsetFactorKgPerMwh.toFixed(1)} Kg/MWh`,
+          'Maximum sunshine': `${building.solarPotential.maxSunshineHoursPerYear.toFixed(1)} hr/year`,
+          'Maximum panels': `${building.solarPotential.solarPanels.length} panels`,
+          'Imagery date': building.imageryDate,
+        }} />
+      </Box>
+    </Paper>
+    : <Skeleton variant='rounded' height={200} />
+
+  const solarConfigurationDetails = building && solarConfigs
+    ? <>
+      <Button
+        onClick={() => setOpenPanelsInfo(true)}
+        variant="contained">
+        More details
+      </Button>
+      <Dialog
+        open={openPanelsInfo}
+        maxWidth='xl'
+        onClose={() => setOpenPanelsInfo(false)}
+      >
+        <DialogTitle>
+          ☀️ Solar configuration details
+        </DialogTitle>
+        <DialogContent dividers={true}>
+          <DialogContentText pb={2}>
+            <b>Solar configuration number</b>: {solarConfigIdx}<br />
+            <b>Yearly energy (DC)</b>: {solarConfigs[solarConfigIdx].yearlyEnergyDcKwh} KWh<br />
+            <b>Number of panels</b>: {solarConfigs[solarConfigIdx].panelsCount} panels<br />
+          </DialogContentText>
+          <SolarDetails
+            building={building}
+            solarConfigIdx={solarConfigIdx}
+            colors={colors}
+          />
+          <Grid container justifyContent='center' pt={2}>
+            <Button onClick={() => setOpenPanelsInfo(false)}>Close</Button>
+          </Grid>
+        </DialogContent>
+      </Dialog>
+    </>
+    : <Skeleton variant='rounded' width={130} height={35} />
+
   return <Box sx={{ display: 'flex' }}>
     <CssBaseline />
 
-    <Box component="main" sx={{ flexGrow: 1, p: 0 }}>
+    <Box component="main" sx={{ flexGrow: 1 }}>
       <Map
         ref={mapRef}
         cesiumApiKey={cesiumApiKey}
         googleMapsApiKey={googleMapsApiKey}
-        onClick={showSolarPotential}
-        onHover={entity =>
-          setSolarPanel(
-            buildingInsights && entity && entity.name
-              ? buildingInsights.solarPotential.solarPanels[parseInt(entity.name)]
-              : null
-          )
-        }
+        onDoubleClick={showSolarPotential}
+        onMouseDown={_ => {
+          const viewer = mapRef?.current?.cesiumElement!
+          // Unlock the camera.
+          viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
+          // Remove the orbit listener.
+          removeOrbit()
+        }}
       >
-
-        { // Solar panels
-          buildingInsights ?
-            solarPanels.map((panel, i) => {
-              const roofSegment = buildingInsights.solarPotential.roofSegmentStats[panel.segmentIndex ?? 0]
-              return createSolarPanelEntity({
-                key: i,
-                panel: panel,
-                panelWidth: buildingInsights.solarPotential.panelWidthMeters,
-                panelHeight: buildingInsights.solarPotential.panelHeightMeters,
-                azimuth: roofSegment.azimuthDegrees,
-              })
-            })
-            : null
-        }
-
-        { // Data layer
-          layer ?
-            <Entity
-              rectangle={{
-                coordinates: Cesium.Rectangle.fromDegrees(
-                  layer.west, layer.south,
-                  layer.east, layer.north,
-                ),
-                material: new Cesium.ImageMaterialProperty({
-                  image: renderDataLayer(layer),
-                  transparent: true,
-                })
-              }}
-            />
-            : null
-        }
+        {mapRoofSegmentPins}
+        {mapSolarPanelEntities}
+        {mapDataLayerEntity}
       </Map>
     </Box>
 
@@ -186,81 +356,36 @@ export default function App() {
       variant="permanent"
       anchor="right"
       sx={{
-        width: SIDEBAR_WIDTH.xs,
+        width: sidebarWidth,
         flexShrink: 0,
         [`& .MuiDrawer-paper`]: {
-          width: SIDEBAR_WIDTH.xs,
+          width: sidebarWidth,
           boxSizing: 'border-box'
         },
       }}
     >
-
-      <Box sx={{ overflow: 'auto', p: 1 }}>
+      <Box p={1} sx={{ overflow: 'auto' }}>
         <SearchBar
           googleMapsApiKey={googleMapsApiKey}
           initialAddress='921 West San Gabriel Avenue, Fresno, CA'
-          onPlaceChanged={async place => {
-            const viewer = mapRef?.current?.cesiumElement!
-            showSolarPotential(place.center)
-            viewer.camera.flyTo({
-              destination: Cesium.Cartesian3.fromDegrees(place.center.longitude, place.center.latitude - 2e-4, 90.0),
-              orientation: {
-                pitch: Cesium.Math.toRadians(-45.0),
-              },
-              // https://developers.google.com/maps/documentation/tile/use-renderer#camera-orbit
-              complete: () => { },
-            })
-          }}
+          onPlaceChanged={async place => showSolarPotential(place.center)}
         />
 
-        <Box padding={2}>
-          <DataLayerChoice
-            layerId={inputDataLayer}
-            layer={layer}
-            month={{ get: inputMonth, set: setInputMonth }}
-            day={{ get: inputDay, set: setInputDay }}
-            hour={{ get: inputHour, set: setInputHour }}
-            mask={{ get: inputMask, set: setInputMask }}
-            onChange={layerId => {
-              if (buildingInsights && layerId) {
-                setInputDataLayer(layerId)
-                showDataLayer(buildingInsights, layerId)
-              }
-            }}
-          />
-        </Box>
+        {error
+          ? <Grid container justifyContent='center' pt={10}>
+            <Typography variant='overline'>No information to display</Typography>
+          </Grid>
+          : <>
+            <Box pt={2}>{dataLayerChoice}</Box>
+            <Box pt={2}>{solarConfigurationSummary}</Box>
+            <Box pt={2}>{buildingInsightsSummary}</Box>
 
-        <Card variant='outlined'>
-          <CardContent>
-            <Typography variant='subtitle1'>Building insights</Typography>
-            {buildingInsights
-              ? // Building insights data
-              <Show data={getSolarInsights(buildingInsights)} />
-              : // Loading animation
-              <Box padding={2} sx={{ width: '100%' }}>
-                <Skeleton />
-                <Skeleton />
-                <Skeleton />
-                <Skeleton />
-              </Box>
-            }
-          </CardContent>
-        </Card>
+            <Grid p={3} container justifyContent="flex-end">
+              {solarConfigurationDetails}
+            </Grid>
+          </>
+        }
       </Box>
-
     </Drawer >
-
-    <Box sx={{ position: 'absolute' }}>
-      {buildingInsights && solarPanel ?
-        <Box padding={1}>
-          <InfoCard
-            title="Solar panel details"
-            content={getSolarPanelDetails(buildingInsights, solarPanel)}
-          />
-        </Box>
-        : null
-      }
-
-    </Box>
   </Box >
 }

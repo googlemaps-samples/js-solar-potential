@@ -1,9 +1,7 @@
 import * as Cesium from 'cesium';
 import { Entity } from 'resium';
 import { TypedArray } from 'geotiff';
-import { LatLng } from './common';
-import { ImagePixels } from './services/solar/dataLayers';
-import { BuildingInsightsResponse, SolarPanel } from './services/solar/buildingInsights';
+import { SolarPanel } from './services/solar/buildingInsights';
 
 const metersPerDegree = 111139
 
@@ -32,31 +30,34 @@ export function lerp(x: number, y: number, t: number) {
 export function clamp(x: number, min: number, max: number) {
   return Math.min(Math.max(x, min), max)
 }
-export function solarPanelPolygon(center: LatLng, width: number, height: number, azimuth: number) {
-  // Get a corner of the solar panel in degrees.
-  const corner = new Cesium.Cartesian2(
-    metersToDegrees(width) / 2,
-    metersToDegrees(height) / 2,
-  )
 
-  // Rotate the corner the the panel's azimuth orientation.
-  const d = Cesium.Matrix2.multiplyByVector(
-    Cesium.Matrix2.fromRotation(Cesium.Math.toRadians(azimuth)),
-    corner, new Cesium.Cartesian2()
-  )
+export function solarPanelPolygon(panel: SolarPanel, width: number, height: number, azimuth: number) {
+  // Define the panel's polygon vertices.
+  const x = metersToDegrees(width) / 2
+  const y = metersToDegrees(height) / 2
+  const vertices = [
+    new Cesium.Cartesian2(+x, +y),
+    new Cesium.Cartesian2(+x, -y),
+    new Cesium.Cartesian2(-x, -y),
+    new Cesium.Cartesian2(-x, +y),
+    new Cesium.Cartesian2(+x, +y),
+  ]
 
-  // Create the polygon at the panel's location.
-  const [west, south] = [center.longitude - d.x, center.latitude - d.y]
-  const [east, north] = [center.longitude + d.x, center.latitude + d.y]
-  return Cesium.Cartesian3.fromDegreesArray([
-    west, south,
-    east, south,
-    east, north,
-    west, north,
-    west, south,
-  ])
+  // Rotate and translate the vertices.
+  const orientation = panel.orientation == 'LANDSCAPE' ? 90 : 0
+  const rotation = Cesium.Matrix2.fromRotation(Cesium.Math.toRadians(orientation + azimuth))
+  const position = new Cesium.Cartesian2(panel.center.longitude, panel.center.latitude)
+  return Cesium.Cartesian3.fromDegreesArray(vertices
+    // Rotate panel
+    .map(vertex => Cesium.Matrix2.multiplyByVector(rotation, vertex, new Cesium.Cartesian2()))
+    // Translate panel
+    .map(vertex => Cesium.Cartesian2.add(position, vertex, new Cesium.Cartesian2()))
+    // Convert to a flat array
+    .flatMap(vertex => [vertex.x, vertex.y])
+  )
 }
 
+// TODO: inline
 export function createSolarPanelEntity({ key, panel, panelWidth, panelHeight, azimuth }: {
   key: number,
   panel: SolarPanel,
@@ -64,24 +65,14 @@ export function createSolarPanelEntity({ key, panel, panelWidth, panelHeight, az
   panelHeight: number,
   azimuth: number,
 }) {
-  const [width, height] = panel.orientation == 'LANDSCAPE'
-    ? [panelHeight, panelWidth]
-    : [panelWidth, panelHeight]
-  const polygon = solarPanelPolygon(panel.center, width, height, azimuth)
   return <Entity
     key={key}
-    polygon={{
-      hierarchy: polygon,
-      material: Cesium.Color.WHITE.withAlpha(0),
-      zIndex: 1,
-    }
-    }
     polyline={{
-      positions: polygon,
+      positions: solarPanelPolygon(panel, panelWidth, panelHeight, azimuth),
       clampToGround: true,
       material: Cesium.Color.BLUE,
-      width: 3,
-      zIndex: 2,
+      width: 4,
+      zIndex: 1,
     }}
   />
 }
