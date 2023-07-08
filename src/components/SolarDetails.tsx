@@ -1,7 +1,8 @@
-import { Accordion, AccordionDetails, AccordionSummary, Typography } from "@mui/material"
+import { Accordion, AccordionDetails, AccordionSummary, Link, Typography } from "@mui/material"
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { useState } from "react"
 import { BuildingInsightsResponse, SolarPanelConfig } from "../services/solar/buildingInsights"
+import LaunchIcon from '@mui/icons-material/Launch'
 import Show from "./Show"
 
 interface Props {
@@ -81,6 +82,10 @@ export default function SolarDetails({ building, solarConfigIdx, colors }: Props
         </AccordionSummary >
         <AccordionDetails>
           <Show data={sections[name].data} />
+          <Link href={sections[name].url} target='_blank' rel='noopener' >
+            API Reference
+            <LaunchIcon fontSize='small' />
+          </Link><br />
         </AccordionDetails>
       </Accordion >
     )}

@@ -313,8 +313,8 @@ export default function App() {
         <DialogContent dividers={true}>
           <DialogContentText pb={2}>
             <b>Solar configuration number</b>: {solarConfigIdx}<br />
-            <b>Yearly energy (DC)</b>: {solarConfigs[solarConfigIdx].yearlyEnergyDcKwh} KWh<br />
             <b>Number of panels</b>: {solarConfigs[solarConfigIdx].panelsCount} panels<br />
+            <b>Yearly energy (DC)</b>: {solarConfigs[solarConfigIdx].yearlyEnergyDcKwh.toFixed(1)} KWh<br />
           </DialogContentText>
           <SolarDetails
             building={building}
