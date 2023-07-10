@@ -80,7 +80,7 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
     }),
   },
   annualFlux: {
-    label: 'Annual flux',
+    label: 'Annual sunshine (flux)',
     urls: response => [response.annualFluxUrl],
     render: ({ layer, mask }) => renderImagePalette({
       data: layer.images[0],
@@ -90,7 +90,7 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
     }),
   },
   monthlyFlux: {
-    label: 'Monthly flux',
+    label: 'Monthly sunshine (flux)',
     urls: response => [response.monthlyFluxUrl],
     render: ({ layer, mask, month }) => renderImagePalette({
       data: {
@@ -139,18 +139,13 @@ export async function downloadLayer(args: {
   center: LatLng,
   googleMapsApiKey: string
 }): Promise<DataLayer> {
-  console.log(`GET ${args.layerId} `)
-  const response = await getDataLayers(args.center, args.sizeMeters / 2, args.googleMapsApiKey)
-  if ('error' in response) {
-    throw response.error
-  }
   const choice = layerChoices[args.layerId]
-  const requests = choice.urls(response).map(url => downloadGeoTIFF(url, args.googleMapsApiKey))
+  const requests = choice.urls(args.response).map(url => downloadGeoTIFF(url, args.googleMapsApiKey))
 
   const dw = metersToDegrees(args.sizeMeters / 2) * 1.3
   const dh = metersToDegrees(args.sizeMeters / 2)
   return {
-    mask: await downloadGeoTIFF(response.maskUrl, args.googleMapsApiKey),
+    mask: await downloadGeoTIFF(args.response.maskUrl, args.googleMapsApiKey),
     images: await Promise.all(requests),
     west: args.center.longitude - dw,
     south: args.center.latitude - dh,

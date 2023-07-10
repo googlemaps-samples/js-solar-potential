@@ -1,4 +1,4 @@
-import { Autocomplete, FormControlLabel, LinearProgress, Slider, Switch, TextField } from "@mui/material"
+import { Autocomplete, FormControlLabel, Grid, LinearProgress, Slider, Switch, TextField, Typography } from "@mui/material"
 import { DataLayer, LayerId, layerChoices } from "../services/solar/dataLayers"
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
   hour: { get: number, set: (x: number) => void }
   mask: { get: boolean, set: (x: boolean) => void }
   onChange: (layerId: LayerId) => void
+  error?: any
 }
 
 export default function DataLayerChoice(props: Props) {
@@ -89,29 +90,35 @@ export default function DataLayerChoice(props: Props) {
       onChange={(_, layerId) => props.onChange(layerId!)}
     />
 
-    {
-      props.layerId && props.layer ?
-        {
-          dsm: null,
-          rgb: null,
-          annualFlux: null,
-          monthlyFlux: monthSlider,
-          hourlyShade: <>
-            {monthSlider}
-            {daySlider}
-            {hourSlider}
-          </>,
-        }[props.layerId]
-        : <LinearProgress />
+    {props.error
+      ? <Grid container justifyContent='center' pt={2}>
+        <Typography variant='overline'>Data layer not available</Typography>
+      </Grid>
+      : props.layerId
+        ? props.layer
+          ? <>
+            {{
+              dsm: null,
+              rgb: null,
+              annualFlux: null,
+              monthlyFlux: monthSlider,
+              hourlyShade: <>
+                {monthSlider}
+                {daySlider}
+                {hourSlider}
+              </>,
+            }[props.layerId]}
+            <FormControlLabel
+              control={<Switch
+                checked={props.mask.get}
+                onChange={(_, checked) => props.mask.set(checked)}
+              />}
+              label="Show roof only"
+            />
+          </>
+          : <LinearProgress />
+        : null
     }
 
-    <FormControlLabel
-      control={<Switch
-        defaultChecked
-        value={props.mask}
-        onChange={(_, checked) => props.mask.set(checked)}
-      />}
-      label="Mask roof"
-    />
   </>
 }

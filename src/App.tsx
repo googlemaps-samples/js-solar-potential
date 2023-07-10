@@ -27,7 +27,7 @@ import SearchBar from './components/SearchBar';
 import Show from './components/Show';
 
 import { BuildingInsightsResponse, findClosestBuilding } from './services/solar/buildingInsights';
-import { DataLayer, LayerId, downloadLayer, getDataLayers, layerChoices } from './services/solar/dataLayers';
+import { DataLayer, DataLayersResponse, LayerId, downloadLayer, getDataLayers, layerChoices } from './services/solar/dataLayers';
 import { Typography } from '@mui/material';
 import DataLayerChoice from './components/DataLayerChoice';
 import { Loader } from '@googlemaps/js-api-loader';
@@ -39,6 +39,18 @@ const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
 const sidebarWidth = 400
 
+/* TODO:
+- 7610 Elphick Road, Sabstopol
+
+- Add palette legend
+- Finalize color pallettes
+- Split "Config number " into "Possible configurations" and "selected configuration"
+- Add "Solar config" card into the "More details" page
+- Add slider to hide solar panels
+- Add slider to animate shade by hour
+- Add slider to animate flux by month
+*/
+
 // https://materialui.co/colors
 const colors = [
   '#E53935',  // 600 Red
@@ -46,7 +58,6 @@ const colors = [
   '#43A047',  // 600 Green
   '#FB8C00',  // 600 Orange
   '#8E24AA',  // 600 Purple
-  '#FDD835',  // 600 Yellow
   '#3949AB',  // 600 Indigo
   '#B71C1C',  // 900 Red
   '#0D47A1',  // 900 Blue
@@ -66,9 +77,12 @@ export default function App() {
 
   // Information to display in the UI.
   const [building, setBuildingInsights] = useState<BuildingInsightsResponse | null>(null)
+  const [dataLayersResponse, setDataLayersResponse] = useState<DataLayersResponse | null>(null)
   const [layer, setLayer] = useState<DataLayer | null>(null)
   const [removeOrbit, setRemoveOrbit] = useState<any>(() => { })
-  const [error, setError] = useState<any>(null)
+  const [removeLayerAnimation, setRemoveLayerAnimation] = useState<any>(() => { })
+  const [errorBuilding, setErrorBuilding] = useState<any>(null)
+  const [errorLayer, setErrorLayer] = useState<any>(null)
 
   // Inputs from the UI.
   const [inputMonthlyKwh, setInputMonthlyKwh] = useState<number>(1000)
@@ -77,6 +91,7 @@ export default function App() {
   const [inputDay, setInputDay] = useState<number>(14)
   const [inputHour, setInputHour] = useState<number>(15)
   const [inputMask, setInputMask] = useState<boolean>(true)
+  const [inputShowPanels, setInputShowPanels] = useState<boolean>(true)
   const [inputShowPanelCounts, setInputShowPanelCounts] = useState<boolean>(false)
 
   const [openPanelsInfo, setOpenPanelsInfo] = useState(false);
@@ -92,7 +107,8 @@ export default function App() {
   async function showSolarPotential(point: LatLng) {
     setBuildingInsights(null)
     setLayer(null)
-    setError(null)
+    setErrorLayer(null)
+    setErrorBuilding(null)
 
     const buildingPromise = findClosestBuilding(point, googleMapsApiKey)
     const elevationPromise = elevationLoader
@@ -103,7 +119,7 @@ export default function App() {
     const building = await buildingPromise
     if ('error' in building) {
       console.error(building.error)
-      return setError(building.error)
+      return setErrorBuilding(building.error)
     }
     setBuildingInsights(building)
 
@@ -141,6 +157,10 @@ export default function App() {
   }
 
   async function showDataLayer(building: BuildingInsightsResponse, layerId: LayerId) {
+    if (!layerId) {
+      return
+    }
+
     const sizeMeters = Math.ceil(degreesToMeters(Math.max(
       building.boundingBox.ne.latitude - building.boundingBox.sw.latitude,
       building.boundingBox.ne.longitude - building.boundingBox.sw.longitude,
@@ -148,8 +168,10 @@ export default function App() {
     const response = await getDataLayers(building.center, sizeMeters / 2, googleMapsApiKey)
     if ('error' in response) {
       console.error(response.error)
-      return setError(response.error)
+      setDataLayersResponse(null)
+      return setErrorLayer(response.error)
     }
+    setDataLayersResponse(response)
     setLayer(await downloadLayer({
       response: response,
       layerId: layerId,
@@ -174,11 +196,12 @@ export default function App() {
   const mapRoofSegmentPins = inputShowPanelCounts && building && solarConfigs
     ? solarConfigs[solarConfigIdx].roofSegmentSummaries
       .map((segment, i) => {
+        const idx = segment.segmentIndex ?? 0
         const viewer = mapRef?.current?.cesiumElement!
-        const roof = building.solarPotential.roofSegmentStats[segment.segmentIndex ?? 0]
+        const roof = building.solarPotential.roofSegmentStats[idx]
         const pinBuilder = new Cesium.PinBuilder()
         const height = viewer.scene.sampleHeight(Cesium.Cartographic.fromDegrees(roof.center.longitude, roof.center.latitude))
-        const color = colors[i % colors.length]
+        const color = colors[idx % colors.length]
         return <Entity
           key={i}
           position={Cesium.Cartesian3.fromDegrees(roof.center.longitude, roof.center.latitude, height)}
@@ -190,11 +213,12 @@ export default function App() {
       })
     : null
 
-  const mapSolarPanelEntities = building && solarConfigs
+  const mapSolarPanelEntities = inputShowPanels && building && solarConfigs
     ? building.solarPotential.solarPanels
       .slice(0, solarConfigs[solarConfigIdx].panelsCount)
       .map((panel, i) => {
-        const roofSegment = building.solarPotential.roofSegmentStats[panel.segmentIndex ?? 0]
+        const idx = panel.segmentIndex ?? 0
+        const roof = building.solarPotential.roofSegmentStats[idx]
         return <Entity
           key={i}
           polyline={{
@@ -202,10 +226,10 @@ export default function App() {
               panel,
               building.solarPotential.panelWidthMeters,
               building.solarPotential.panelHeightMeters,
-              roofSegment.azimuthDegrees ?? 0,
+              roof.azimuthDegrees ?? 0,
             ),
             clampToGround: true,
-            material: Cesium.Color.BLUE,
+            material: Cesium.Color.fromCssColorString(colors[idx % colors.length]),
             width: 4,
             zIndex: 1,
           }}
@@ -239,12 +263,24 @@ export default function App() {
           hour={{ get: inputHour, set: setInputHour }}
           mask={{ get: inputMask, set: setInputMask }}
           onChange={layerId => {
-            if (!error && inputDataLayer != layerId) {
+            setErrorLayer(null)
+            if (inputDataLayer != layerId) {
               setLayer(null)
               setInputDataLayer(layerId)
               showDataLayer(building, layerId)
+              switch (layerId) {
+                case 'monthlyFlux':
+                  setInputMonth(0)
+                  break
+                case 'hourlyShade':
+                  setInputMonth(3)
+                  setInputDay(14)
+                  setInputHour(5)
+                  break
+              }
             }
           }}
+          error={errorLayer}
         />
       </Box>
     </Paper>
@@ -253,9 +289,8 @@ export default function App() {
   const solarConfigurationSummary = solarConfigs && solarConfigs
     ? <Paper>
       <Box p={2}>
-        <Typography variant='subtitle1'>Solar configuration</Typography>
-        <Show data={{
-          'Config number': `${solarConfigIdx} (out of ${solarConfigs.length})`,
+        <Typography variant='subtitle1'>☀️ Solar configuration</Typography>
+        <Show sortObjectKeys={false} data={{
           'Monthly energy':
             <Stack direction='row' pt={3} spacing={1}>
               <Slider
@@ -265,17 +300,25 @@ export default function App() {
                 valueLabelDisplay="on"
                 onChange={(_, monthlyKwh) => setInputMonthlyKwh(monthlyKwh as number)}
                 sx={{ width: 140 }}
-              />,
+              />
               <Typography>KWh</Typography>
             </Stack>,
-          'Panels count': `${solarConfigs[solarConfigIdx].panelsCount} panels`,
+          'Config ID': solarConfigIdx,
+          'Total panels': `${solarConfigs[solarConfigIdx].panelsCount} panels`,
         }} />
         <FormControlLabel
           control={<Switch
-            value={inputShowPanelCounts}
+            checked={inputShowPanels}
+            onChange={(_, checked) => setInputShowPanels(checked)}
+          />}
+          label="Show panels"
+        />
+        <FormControlLabel
+          control={<Switch
+            checked={inputShowPanelCounts}
             onChange={(_, checked) => setInputShowPanelCounts(checked)}
           />}
-          label="Show number of panels"
+          label="Display number of panels"
         />
       </Box >
     </Paper>
@@ -284,8 +327,8 @@ export default function App() {
   const buildingInsightsSummary = building
     ? <Paper elevation={2}>
       <Box p={2}>
-        <Typography variant='subtitle1'>Building insights</Typography>
-        <Show data={{
+        <Typography variant='subtitle1'>🏡 Building insights</Typography>
+        <Show sortObjectKeys={false} data={{
           'Carbon offset factor': `${building.solarPotential.carbonOffsetFactorKgPerMwh.toFixed(1)} Kg/MWh`,
           'Maximum sunshine': `${building.solarPotential.maxSunshineHoursPerYear.toFixed(1)} hr/year`,
           'Maximum panels': `${building.solarPotential.solarPanels.length} panels`,
@@ -308,19 +351,51 @@ export default function App() {
         onClose={() => setOpenPanelsInfo(false)}
       >
         <DialogTitle>
-          ☀️ Solar configuration details
+          ☀️ Solar configuration details <br />
+          <Typography variant='caption'>Configuration ID: {solarConfigIdx}</Typography>
         </DialogTitle>
         <DialogContent dividers={true}>
-          <DialogContentText pb={2}>
-            <b>Solar configuration number</b>: {solarConfigIdx}<br />
-            <b>Number of panels</b>: {solarConfigs[solarConfigIdx].panelsCount} panels<br />
-            <b>Yearly energy (DC)</b>: {solarConfigs[solarConfigIdx].yearlyEnergyDcKwh.toFixed(1)} KWh<br />
-          </DialogContentText>
+          <Paper elevation={2}>
+            <Box p={2}>
+              <Typography variant='subtitle2'>Configuration</Typography>
+              <Show sortObjectKeys={false} data={{
+                'Monthly energy':
+                  <Stack direction='row' pt={3} spacing={1}>
+                    <Slider
+                      value={Math.round(solarConfigs[solarConfigIdx].yearlyEnergyDcKwh / 12)}
+                      min={Math.floor(solarConfigs[0].yearlyEnergyDcKwh / 12)}
+                      max={Math.floor(solarConfigs[solarConfigs.length - 1].yearlyEnergyDcKwh / 12)}
+                      valueLabelDisplay="on"
+                      onChange={(_, monthlyKwh) => setInputMonthlyKwh(monthlyKwh as number)}
+                      sx={{ width: 140 }}
+                    />
+                    <Typography>KWh</Typography>
+                  </Stack>,
+                'Config ID': solarConfigIdx,
+                'Possible configs': solarConfigs.length,
+                'Solar panels used': `${solarConfigs[solarConfigIdx].panelsCount} out of ${building.solarPotential.solarPanels.length}`,
+              }} />
+            </Box>
+          </Paper>
+          <Typography pt={4} variant='subtitle2'>
+            Building insights response
+          </Typography>
           <SolarDetails
             building={building}
             solarConfigIdx={solarConfigIdx}
             colors={colors}
           />
+          {dataLayersResponse
+            ? <>
+              <Typography pt={4} variant='subtitle2'>
+                Data layers response
+              </Typography>
+              <Show data={dataLayersResponse} />
+            </>
+            : <Grid container justifyContent='center' pt={4}>
+              <Typography variant='overline'>Data layers not available</Typography>
+            </Grid>
+          }
           <Grid container justifyContent='center' pt={2}>
             <Button onClick={() => setOpenPanelsInfo(false)}>Close</Button>
           </Grid>
@@ -371,11 +446,8 @@ export default function App() {
           onPlaceChanged={async place => showSolarPotential(place.center)}
         />
 
-        {error
-          ? <Grid container justifyContent='center' pt={10}>
-            <Typography variant='overline'>No information to display</Typography>
-          </Grid>
-          : <>
+        {!errorBuilding
+          ? <>
             <Box pt={2}>{dataLayerChoice}</Box>
             <Box pt={2}>{solarConfigurationSummary}</Box>
             <Box pt={2}>{buildingInsightsSummary}</Box>
@@ -384,6 +456,9 @@ export default function App() {
               {solarConfigurationDetails}
             </Grid>
           </>
+          : <Grid container justifyContent='center' pt={10}>
+            <Typography variant='overline'>No information to display</Typography>
+          </Grid>
         }
       </Box>
     </Drawer >

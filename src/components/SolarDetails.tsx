@@ -49,18 +49,18 @@ export default function SolarDetails({ building, solarConfigIdx, colors }: Props
         }
       }),
     },
-    [`insights.solarPotential.solarPanelConfigs[${solarConfigIdx}] (${solarPanelConfigs.length} configs total)`]: {
+    [`insights.solarPotential.solarPanelConfigs[${solarConfigIdx}]`]: {
       url: 'https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest#solarpanelconfig',
       data: {
         ...solarConfigData,
-        roofSegmentSummaries: roofSegmentSummaries.map((roof, i) =>
+        roofSegmentSummaries: roofSegmentSummaries.map(roof =>
         ({
-          '': <Typography sx={{ color: colors[i % colors.length] }}>█</Typography>,
+          '': <Typography sx={{ color: colors[(roof.segmentIndex ?? 0) % colors.length] }}>█</Typography>,
           ...roof
         })),
       },
     },
-    [`insights.solarPotential.solarPanels[0:${solarConfig.panelsCount}] (${solarPanels.length} panels total)`]: {
+    [`insights.solarPotential.solarPanels[0:${solarConfig.panelsCount}]`]: {
       url: 'https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest#solarpanel',
       data: solarPanels.slice(0, solarConfig.panelsCount),
     },
@@ -82,10 +82,13 @@ export default function SolarDetails({ building, solarConfigIdx, colors }: Props
         </AccordionSummary >
         <AccordionDetails>
           <Show data={sections[name].data} />
-          <Link href={sections[name].url} target='_blank' rel='noopener' >
-            API Reference
-            <LaunchIcon fontSize='small' />
-          </Link><br />
+          <Typography variant='caption'>
+            <br /> View the field names and descriptions in the &nbsp;
+            <Link href={sections[name].url} target='_blank' rel='noopener' >
+              API Reference
+              <LaunchIcon fontSize='small' />
+            </Link><br />
+          </Typography>
         </AccordionDetails>
       </Accordion >
     )}

@@ -1,5 +1,5 @@
 import { Cesium3DTileset, Viewer } from "resium"
-import { PropsWithChildren, forwardRef } from 'react'
+import { PropsWithChildren, forwardRef, useEffect } from 'react'
 import * as Cesium from "cesium"
 import { LatLng } from '../common'
 
@@ -30,6 +30,14 @@ const Map = forwardRef<{ cesiumElement: Cesium.Viewer }, PropsWithChildren<Props
     Cesium.Ion.defaultAccessToken = props.cesiumApiKey
   }
   Cesium.RequestScheduler.requestsByServer["tile.googleapis.com:443"] = 18
+
+  useEffect(() => {
+    // @ts-ignore
+    const viewer: Cesium.Viewer = ref?.current.cesiumElement
+    Cesium.createGooglePhotorealistic3DTileset(props.googleMapsApiKey)
+      .then(tileset => viewer.scene.primitives.add(tileset))
+      .catch(err => console.error(`Failed to load tileset: ${err}`))
+  }, [])
 
   return <Viewer
     ref={ref}
@@ -76,14 +84,6 @@ const Map = forwardRef<{ cesiumElement: Cesium.Viewer }, PropsWithChildren<Props
       onMouseDown(event.position)
     }
   >
-
-    {props.googleMapsApiKey ?
-      <Cesium3DTileset
-        url={`https://tile.googleapis.com/v1/3dtiles/root.json?key=${props.googleMapsApiKey}`}
-        showCreditsOnScreen={true}
-      />
-      : null
-    }
 
     {props.children}
 
