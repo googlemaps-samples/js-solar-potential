@@ -71,7 +71,6 @@ export default function DataLayerChoice(props: Props) {
     min={0}
     max={23}
     marks={[
-      { value: 1, label: '1am' },
       { value: 4, label: '4am' },
       { value: 8, label: '8am' },
       { value: 12, label: '12pm' },

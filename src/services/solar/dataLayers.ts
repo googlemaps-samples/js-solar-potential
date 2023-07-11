@@ -54,9 +54,9 @@ interface LayerChoice {
   palette: string[]
 }
 
-const maskPalette = ['212121', 'FAFAFA']
-const dsmPalette = ['0D47A1', '00BCD4', '1B5E20', 'FFCA28', 'B71C1C']
-const fluxPalette = ['212121', '1A237E', '7B1FA2', 'FB8C00', 'FFB74D', 'FFFDE7']
+const maskPalette = ['212121', 'EEEEEE']
+const dsmPalette = ['3949AB', '81D4FA', '66BB6A', 'FFE082', 'E53935']
+const fluxPalette = ['311B92', 'FF7043', 'FFB74D', 'FFE0B2']
 const shadePalette = ['212121', 'FFCA28']
 
 export const layerChoices: Record<LayerId, LayerChoice> = {
@@ -181,7 +181,7 @@ export async function downloadLayer(args: {
   const choice = layerChoices[args.layerId]
   const requests = choice.urls(args.response).map(url => downloadGeoTIFF(url, args.googleMapsApiKey))
 
-  const dw = metersToDegrees(args.sizeMeters / 2) * 1.3
+  const dw = metersToDegrees(args.sizeMeters / 2)
   const dh = metersToDegrees(args.sizeMeters / 2)
   return {
     mask: await downloadGeoTIFF(args.response.maskUrl, args.googleMapsApiKey),

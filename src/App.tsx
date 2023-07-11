@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
-import { Entity } from 'resium'
+import { Entity, BoxGraphics } from 'resium'
 
 import CssBaseline from '@mui/material/CssBaseline'
 import {
@@ -34,6 +34,14 @@ import { LatLng } from './common'
 import SolarDetails from './components/SolarDetails'
 import Palette from './components/Palette'
 
+interface SolarPanelEntity {
+  position: Cesium.Cartesian3
+  rotation: Cesium.Quaternion
+  width: number
+  height: number
+  roofIdx: number
+}
+
 const cesiumApiKey = import.meta.env.VITE_CESIUM_API_KEY
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
@@ -43,6 +51,7 @@ const sidebarWidth = 400
 - 7610 Elphick Road, Sebastopol, CA
 
 - Finalize color palettes
+- Reactive design
 */
 
 // https://materialui.co/colors
@@ -79,9 +88,12 @@ export default function App() {
   const [errorLayer, setErrorLayer] = useState<any>(null)
   const [openMoreDetails, setOpenMoreDetails] = useState(false)
 
+  // Map entities.
+  const [solarPanels, setSolarPanels] = useState<SolarPanelEntity[]>([])
+
   // Inputs from the UI.
   const [inputMonthlyKwh, setInputMonthlyKwh] = useState<number>(1000)
-  const [inputDataLayer, setInputDataLayer] = useState<LayerId>('monthlyFlux')
+  const [inputDataLayer, setInputDataLayer] = useState<LayerId>('annualFlux')
   const [inputMonth, setInputMonth] = useState<number>(0)
   const [inputDay, setInputDay] = useState<number>(0)
   const [inputHour, setInputHour] = useState<number>(0)
@@ -118,7 +130,28 @@ export default function App() {
     }
     setBuildingInsights(building)
 
+    const panelPositions = building.solarPotential.solarPanels
+      .map(panel => Cesium.Cartesian3.fromDegrees(panel.center.longitude, panel.center.latitude))
+
     const viewer = mapRef?.current?.cesiumElement!
+    const clampedPositions = await viewer.scene.clampToHeightMostDetailed(panelPositions)
+    setSolarPanels(building.solarPotential.solarPanels.map((panel, i) => {
+      const roof = building.solarPotential.roofSegmentStats[panel.segmentIndex ?? 0]
+      const position = clampedPositions[i]
+      const width = building.solarPotential.panelWidthMeters
+      const height = building.solarPotential.panelHeightMeters
+      return {
+        position: position,
+        rotation: Cesium.Transforms.headingPitchRollQuaternion(
+          position,
+          Cesium.HeadingPitchRoll.fromDegrees(roof.azimuthDegrees + 90, roof.pitchDegrees, 0)
+        ),
+        width: panel.orientation == 'LANDSCAPE' ? width : height,
+        height: panel.orientation == 'LANDSCAPE' ? height : width,
+        roofIdx: panel.segmentIndex ?? 0,
+      }
+    }))
+
     const location = Cesium.Cartesian3.fromDegrees(
       building.center.longitude,
       building.center.latitude,
@@ -208,28 +241,18 @@ export default function App() {
       })
     : null
 
-  const mapSolarPanelEntities = inputShowPanels && building && solarConfigs
-    ? building.solarPotential.solarPanels
-      .slice(0, solarConfigs[solarConfigIdx].panelsCount)
-      .map((panel, i) => {
-        const idx = panel.segmentIndex ?? 0
-        const roof = building.solarPotential.roofSegmentStats[idx]
-        return <Entity
-          key={i}
-          polyline={{
-            positions: solarPanelPolygon(
-              panel,
-              building.solarPotential.panelWidthMeters,
-              building.solarPotential.panelHeightMeters,
-              roof.azimuthDegrees ?? 0,
-            ),
-            clampToGround: true,
-            material: Cesium.Color.fromCssColorString(colors[idx % colors.length]),
-            width: 4,
-            zIndex: 1,
-          }}
-        />
-      })
+  const mapSolarPanelEntities = inputShowPanels && solarPanels && solarConfigs
+    ? solarPanels.slice(0, solarConfigs[solarConfigIdx].panelsCount)
+      .map((panel, i) =>
+        <Entity key={i} position={panel.position} orientation={panel.rotation}>
+          <BoxGraphics
+            dimensions={new Cesium.Cartesian3(panel.width, panel.height, 0.2)}
+            material={Cesium.Color.fromCssColorString(colors[panel.roofIdx % colors.length]).withAlpha(0.8)}
+            outline={true}
+            outlineColor={Cesium.Color.BLACK}
+          />
+        </Entity>
+      )
     : null
 
   const mapDataLayerEntity = layer
@@ -505,6 +528,7 @@ export default function App() {
         <SearchBar
           googleMapsApiKey={googleMapsApiKey}
           initialAddress='921 West San Gabriel Avenue, Fresno, CA'
+          // initialAddress='7312 West Green Lake Dr N, Seattle, WA 98103'
           onPlaceChanged={async place => showSolarPotential(place.center)}
         />
 
