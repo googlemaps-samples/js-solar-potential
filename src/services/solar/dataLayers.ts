@@ -22,7 +22,8 @@ export interface ImagePixels {
 }
 
 export type LayerId
-  = 'dsm'
+  = 'mask'
+  | 'dsm'
   | 'rgb'
   | 'annualFlux'
   | 'monthlyFlux'
@@ -41,35 +42,57 @@ interface LayerChoice {
   label: string
   urls: (response: DataLayersResponse) => string[]
   render: (args: {
+    choice: LayerChoice,
     layer: DataLayer,
     mask: ImagePixels,
     month?: number,
     day?: number,
-    hour?: number
+    hour?: number,
   }) => HTMLCanvasElement
+  min: (layer: DataLayer) => number
+  max: (layer: DataLayer) => number
+  palette: string[]
 }
 
+const maskPalette = ['212121', 'FAFAFA']
 const dsmPalette = ['0D47A1', '00BCD4', '1B5E20', 'FFCA28', 'B71C1C']
 const fluxPalette = ['212121', '1A237E', '7B1FA2', 'FB8C00', 'FFB74D', 'FFFDE7']
 const shadePalette = ['212121', 'FFCA28']
 
 export const layerChoices: Record<LayerId, LayerChoice> = {
+  mask: {
+    label: 'Roof mask',
+    urls: response => [response.maskUrl],
+    render: ({ choice, layer, mask }) => renderImagePalette({
+      data: layer.images[0],
+      mask: mask,
+      palette: choice.palette,
+      min: choice.min(layer),
+      max: choice.max(layer),
+    }),
+    min: _ => 0,
+    max: _ => 1,
+    palette: maskPalette,
+  },
   dsm: {
     label: 'Digital Surface Map (DSM)',
     urls: response => [response.dsmUrl],
-    render: ({ layer, mask }) => {
-      // @ts-ignore
-      const minValue = layer.images[0].bands[0].valueOf().reduce(
-        (x: number, y: number) => Math.min(x, y),
-        Number.POSITIVE_INFINITY)
-      return renderImagePalette({
-        data: layer.images[0],
-        mask: mask,
-        palette: dsmPalette,
-        min: minValue,
-        max: minValue + 10,
-      })
-    }
+    render: ({ choice, layer, mask }) => renderImagePalette({
+      data: layer.images[0],
+      mask: mask,
+      palette: choice.palette,
+      min: choice.min(layer),
+      max: choice.max(layer),
+    }),
+    // @ts-ignore
+    min: layer => layer.images[0].bands[0].valueOf().reduce(
+      (x: number, y: number) => Math.min(x, y),
+      Number.POSITIVE_INFINITY),
+    // @ts-ignore
+    max: layer => layer.images[0].bands[0].valueOf().reduce(
+      (x: number, y: number) => Math.max(x, y),
+      Number.NEGATIVE_INFINITY),
+    palette: dsmPalette,
   },
   rgb: {
     label: 'Aerial image (RGB)',
@@ -78,34 +101,45 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
       rgb: layer.images[0],
       mask: mask,
     }),
+    min: _ => 0,
+    max: _ => 255,
+    palette: [],
   },
   annualFlux: {
     label: 'Annual sunshine (flux)',
     urls: response => [response.annualFluxUrl],
-    render: ({ layer, mask }) => renderImagePalette({
+    render: ({ choice, layer, mask }) => renderImagePalette({
       data: layer.images[0],
       mask: mask,
-      palette: fluxPalette,
-      max: 2000,
+      palette: choice.palette,
+      min: choice.min(layer),
+      max: choice.max(layer),
     }),
+    min: _ => 0,
+    max: _ => 2000,
+    palette: fluxPalette,
   },
   monthlyFlux: {
     label: 'Monthly sunshine (flux)',
     urls: response => [response.monthlyFluxUrl],
-    render: ({ layer, mask, month }) => renderImagePalette({
+    render: ({ choice, layer, mask, month }) => renderImagePalette({
       data: {
         ...layer.images[0],
         bands: [layer.images[0].bands[month!]],
       },
       mask: mask,
-      palette: fluxPalette,
-      max: 200,
+      palette: choice.palette,
+      min: choice.min(layer),
+      max: choice.max(layer),
     }),
+    min: _ => 0,
+    max: _ => 200,
+    palette: fluxPalette,
   },
   hourlyShade: {
     label: 'Hourly shade',
     urls: response => response.hourlyShadeUrls,
-    render: ({ layer, mask, month, day, hour }) => renderImagePalette({
+    render: ({ choice, layer, mask, month, day, hour }) => renderImagePalette({
       data: {
         ...layer.images[month!],
         bands: [
@@ -114,8 +148,13 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
         ],
       },
       mask: mask,
-      palette: shadePalette,
+      palette: choice.palette,
+      min: choice.min(layer),
+      max: choice.max(layer),
     }),
+    min: _ => 0,
+    max: _ => 1,
+    palette: shadePalette,
   },
 }
 

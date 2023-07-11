@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "serve dist"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
@@ -19,7 +20,8 @@
     "geotiff": "^2.0.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "resium": "^1.16.1"
+    "resium": "^1.16.1",
+    "serve": "^14.2.0"
   },
   "devDependencies": {
     "@googlemaps/js-api-loader": "^1.16.2",

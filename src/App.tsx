@@ -1,14 +1,13 @@
-import { useRef, useState } from 'react';
-import * as Cesium from 'cesium';
-import { Entity } from 'resium';
+import { useEffect, useRef, useState } from 'react'
+import * as Cesium from 'cesium'
+import { Entity } from 'resium'
 
-import CssBaseline from '@mui/material/CssBaseline';
+import CssBaseline from '@mui/material/CssBaseline'
 import {
   Box,
   Button,
   Dialog,
   DialogContent,
-  DialogContentText,
   DialogTitle,
   Drawer,
   FormControlLabel,
@@ -18,21 +17,22 @@ import {
   Slider,
   Stack,
   Switch,
-} from '@mui/material';
+} from '@mui/material'
 
-import { degreesToMeters, solarPanelPolygon } from './utils';
+import { degreesToMeters, solarPanelPolygon } from './utils'
 
-import Map from './components/Map';
-import SearchBar from './components/SearchBar';
-import Show from './components/Show';
+import Map from './components/Map'
+import SearchBar from './components/SearchBar'
+import Show from './components/Show'
 
-import { BuildingInsightsResponse, findClosestBuilding } from './services/solar/buildingInsights';
-import { DataLayer, DataLayersResponse, LayerId, downloadLayer, getDataLayers, layerChoices } from './services/solar/dataLayers';
-import { Typography } from '@mui/material';
-import DataLayerChoice from './components/DataLayerChoice';
-import { Loader } from '@googlemaps/js-api-loader';
-import { LatLng } from './common';
-import SolarDetails from './components/SolarDetails';
+import { BuildingInsightsResponse, findClosestBuilding } from './services/solar/buildingInsights'
+import { DataLayer, DataLayersResponse, LayerId, downloadLayer, getDataLayers, layerChoices } from './services/solar/dataLayers'
+import { Typography } from '@mui/material'
+import DataLayerChoice from './components/DataLayerChoice'
+import { Loader } from '@googlemaps/js-api-loader'
+import { LatLng } from './common'
+import SolarDetails from './components/SolarDetails'
+import Palette from './components/Palette'
 
 const cesiumApiKey = import.meta.env.VITE_CESIUM_API_KEY
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
@@ -40,15 +40,10 @@ const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 const sidebarWidth = 400
 
 /* TODO:
-- 7610 Elphick Road, Sabstopol
+- 7610 Elphick Road, Sebastopol, CA
 
-- Add palette legend
-- Finalize color pallettes
-- Split "Config number " into "Possible configurations" and "selected configuration"
-- Add "Solar config" card into the "More details" page
-- Add slider to hide solar panels
-- Add slider to animate shade by hour
-- Add slider to animate flux by month
+- Add favicon
+- Finalize color palettes
 */
 
 // https://materialui.co/colors
@@ -75,32 +70,33 @@ const colors = [
 export default function App() {
   const mapRef = useRef<{ cesiumElement: Cesium.Viewer }>(null)
 
-  // Information to display in the UI.
+  // App state.
   const [building, setBuildingInsights] = useState<BuildingInsightsResponse | null>(null)
   const [dataLayersResponse, setDataLayersResponse] = useState<DataLayersResponse | null>(null)
   const [layer, setLayer] = useState<DataLayer | null>(null)
-  const [removeOrbit, setRemoveOrbit] = useState<any>(() => { })
-  const [removeLayerAnimation, setRemoveLayerAnimation] = useState<any>(() => { })
+  const [removeOrbit, setRemoveOrbit] = useState<any>()
+  const [removeLayerAnimation, setRemoveLayerAnimation] = useState<any>()
   const [errorBuilding, setErrorBuilding] = useState<any>(null)
   const [errorLayer, setErrorLayer] = useState<any>(null)
+  const [openMoreDetails, setOpenMoreDetails] = useState(false)
 
   // Inputs from the UI.
   const [inputMonthlyKwh, setInputMonthlyKwh] = useState<number>(1000)
   const [inputDataLayer, setInputDataLayer] = useState<LayerId>('monthlyFlux')
-  const [inputMonth, setInputMonth] = useState<number>(3)
-  const [inputDay, setInputDay] = useState<number>(14)
-  const [inputHour, setInputHour] = useState<number>(15)
+  const [inputMonth, setInputMonth] = useState<number>(0)
+  const [inputDay, setInputDay] = useState<number>(0)
+  const [inputHour, setInputHour] = useState<number>(0)
   const [inputMask, setInputMask] = useState<boolean>(true)
+  const [inputAnimation, setInputAnimation] = useState<boolean>(true)
   const [inputShowPanels, setInputShowPanels] = useState<boolean>(true)
   const [inputShowPanelCounts, setInputShowPanelCounts] = useState<boolean>(false)
-
-  const [openPanelsInfo, setOpenPanelsInfo] = useState(false);
 
   const googleMapsLoader = new Loader({ apiKey: googleMapsApiKey })
   const elevationLoader = googleMapsLoader
     .importLibrary('core')
     .then(() => new google.maps.ElevationService())
 
+  const layerChoice = layerChoices[inputDataLayer]
   const solarConfigs = building?.solarPotential?.solarPanelConfigs
   const solarConfigIdx = solarConfigs?.findIndex(config => config.yearlyEnergyDcKwh >= inputMonthlyKwh * 12) ?? 0
 
@@ -141,13 +137,12 @@ export default function App() {
             offset,
           )
           // Orbit around this point.
-          function orbit(_) {
-            viewer.scene.camera.rotateRight(-0.0002)
-          }
-          try {
+          if (removeOrbit) {
             removeOrbit()
-          } catch (e) { }
-          const unsubscribe = viewer.clock.onTick.addEventListener(orbit)
+          }
+          const unsubscribe = viewer.clock.onTick.addEventListener(() =>
+            viewer.camera.rotateRight(-0.0002)
+          )
           setRemoveOrbit(() => unsubscribe)
         }
       }
@@ -182,7 +177,8 @@ export default function App() {
   }
 
   function renderDataLayer(layer: DataLayer): HTMLCanvasElement {
-    return layerChoices[inputDataLayer].render({
+    return layerChoice.render({
+      choice: layerChoice,
       layer: layer,
       mask: inputMask
         ? layer.mask
@@ -252,6 +248,39 @@ export default function App() {
     />
     : null
 
+  function playAnimation(onTick: (seconds: number) => void) {
+    const viewer = mapRef?.current?.cesiumElement!
+    stopAnimation()
+    const unsubscribe = viewer.clock.onTick.addEventListener(clock =>
+      onTick(Math.floor(Date.now() / 1000))
+    )
+    setRemoveLayerAnimation(() => unsubscribe)
+    setInputAnimation(true)
+  }
+
+  function stopAnimation() {
+    if (removeLayerAnimation) {
+      removeLayerAnimation()
+    }
+    setInputAnimation(false)
+  }
+
+  useEffect(() => {
+    if (!inputAnimation) {
+      return stopAnimation()
+    }
+    switch (inputDataLayer) {
+      case 'monthlyFlux':
+        playAnimation(seconds => setInputMonth(seconds % 12))
+        break
+      case 'hourlyShade':
+        playAnimation(seconds => setInputHour(seconds % 24))
+        break
+      default:
+        stopAnimation()
+    }
+  }, [inputDataLayer, inputAnimation])
+
   const dataLayerChoice = building
     ? <Paper elevation={2}>
       <Box p={2}>
@@ -262,22 +291,44 @@ export default function App() {
           day={{ get: inputDay, set: setInputDay }}
           hour={{ get: inputHour, set: setInputHour }}
           mask={{ get: inputMask, set: setInputMask }}
+          animation={{ get: inputAnimation, set: setInputAnimation }}
           onChange={layerId => {
             setErrorLayer(null)
             if (inputDataLayer != layerId) {
               setLayer(null)
               setInputDataLayer(layerId)
               showDataLayer(building, layerId)
-              switch (layerId) {
-                case 'monthlyFlux':
+              const defaultSettings: Record<LayerId, () => void> = {
+                mask: () => {
+                  setInputAnimation(false)
+                  setInputMask(false)
+                },
+                dsm: () => {
+                  setInputAnimation(false)
+                  setInputMask(false)
+                },
+                rgb: () => {
+                  setInputAnimation(false)
+                  setInputMask(false)
+                },
+                annualFlux: () => {
+                  setInputAnimation(false)
+                  setInputMask(true)
+                },
+                monthlyFlux: () => {
+                  setInputAnimation(true)
+                  setInputMask(true)
                   setInputMonth(0)
-                  break
-                case 'hourlyShade':
+                },
+                hourlyShade: () => {
+                  setInputAnimation(true)
+                  setInputMask(true)
                   setInputMonth(3)
                   setInputDay(14)
                   setInputHour(5)
-                  break
+                },
               }
+              defaultSettings[layerId]()
             }
           }}
           error={errorLayer}
@@ -285,6 +336,14 @@ export default function App() {
       </Box>
     </Paper>
     : <Skeleton variant='rounded' height={120} />
+
+  const paletteLegend = inputDataLayer != 'rgb' && layerChoice && layer
+    ? <Palette
+      colors={layerChoice.palette}
+      min={layerChoice.min(layer)}
+      max={layerChoice.max(layer)}
+    />
+    : null
 
   const solarConfigurationSummary = solarConfigs && solarConfigs
     ? <Paper>
@@ -341,14 +400,14 @@ export default function App() {
   const solarConfigurationDetails = building && solarConfigs
     ? <>
       <Button
-        onClick={() => setOpenPanelsInfo(true)}
+        onClick={() => setOpenMoreDetails(true)}
         variant="contained">
         More details
       </Button>
       <Dialog
-        open={openPanelsInfo}
+        open={openMoreDetails}
         maxWidth='xl'
-        onClose={() => setOpenPanelsInfo(false)}
+        onClose={() => setOpenMoreDetails(false)}
       >
         <DialogTitle>
           ☀️ Solar configuration details <br />
@@ -397,7 +456,7 @@ export default function App() {
             </Grid>
           }
           <Grid container justifyContent='center' pt={2}>
-            <Button onClick={() => setOpenPanelsInfo(false)}>Close</Button>
+            <Button onClick={() => setOpenMoreDetails(false)}>Close</Button>
           </Grid>
         </DialogContent>
       </Dialog>
@@ -425,6 +484,10 @@ export default function App() {
         {mapSolarPanelEntities}
         {mapDataLayerEntity}
       </Map>
+    </Box>
+
+    <Box pl={2} pt={4} pb={20} sx={{ position: 'absolute', height: '100%' }}>
+      {paletteLegend}
     </Box>
 
     <Drawer
