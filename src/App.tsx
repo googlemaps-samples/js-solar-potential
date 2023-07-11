@@ -42,7 +42,6 @@ const sidebarWidth = 400
 /* TODO:
 - 7610 Elphick Road, Sebastopol, CA
 
-- Add favicon
 - Finalize color palettes
 */
 
