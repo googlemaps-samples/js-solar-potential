@@ -42,12 +42,10 @@ const Map = forwardRef<{ cesiumElement: Cesium.Viewer }, PropsWithChildren<Props
   return <Viewer
     ref={ref}
     animation={false}
-    // baseLayer={false}
     baseLayerPicker={false}
-    fullscreenButton={false}
     geocoder={false}
+    fullscreenButton={false}
     homeButton={false}
-    infoBox={false}
     scene3DOnly={true}
     timeline={false}
     style={{

@@ -1,7 +1,9 @@
 import { TypedArray, fromArrayBuffer } from 'geotiff';
+import * as geokeysToProj4 from 'geotiff-geokeys-to-proj4';
+import proj4 from 'proj4';
 import { Date } from '../../common';
 import { LatLng } from '../../common';
-import { lerp, metersToDegrees, normalize } from '../../utils';
+import { lerp, normalize } from '../../utils';
 
 export interface DataLayersResponse {
   imageryDate: Date
@@ -18,7 +20,9 @@ export interface DataLayersResponse {
 export interface ImagePixels {
   width: number
   height: number
-  bands: TypedArray[]
+  rasters: TypedArray[]
+  ne: LatLng
+  sw: LatLng
 }
 
 export type LayerId
@@ -30,6 +34,7 @@ export type LayerId
   | 'hourlyShade'
 
 export interface DataLayer {
+  id: LayerId
   images: ImagePixels[]
   mask: ImagePixels
   west: number
@@ -41,14 +46,6 @@ export interface DataLayer {
 interface LayerChoice {
   label: string
   urls: (response: DataLayersResponse) => string[]
-  render: (args: {
-    choice: LayerChoice,
-    layer: DataLayer,
-    mask: ImagePixels,
-    month?: number,
-    day?: number,
-    hour?: number,
-  }) => HTMLCanvasElement
   min: (layer: DataLayer) => number
   max: (layer: DataLayer) => number
   palette: string[]
@@ -63,13 +60,6 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   mask: {
     label: 'Roof mask',
     urls: response => [response.maskUrl],
-    render: ({ choice, layer, mask }) => renderImagePalette({
-      data: layer.images[0],
-      mask: mask,
-      palette: choice.palette,
-      min: choice.min(layer),
-      max: choice.max(layer),
-    }),
     min: _ => 0,
     max: _ => 1,
     palette: maskPalette,
@@ -77,19 +67,12 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   dsm: {
     label: 'Digital Surface Map (DSM)',
     urls: response => [response.dsmUrl],
-    render: ({ choice, layer, mask }) => renderImagePalette({
-      data: layer.images[0],
-      mask: mask,
-      palette: choice.palette,
-      min: choice.min(layer),
-      max: choice.max(layer),
-    }),
     // @ts-ignore
-    min: layer => layer.images[0].bands[0].valueOf().reduce(
+    min: layer => layer.images[0].rasters[0].valueOf().reduce(
       (x: number, y: number) => Math.min(x, y),
       Number.POSITIVE_INFINITY),
     // @ts-ignore
-    max: layer => layer.images[0].bands[0].valueOf().reduce(
+    max: layer => layer.images[0].rasters[0].valueOf().reduce(
       (x: number, y: number) => Math.max(x, y),
       Number.NEGATIVE_INFINITY),
     palette: dsmPalette,
@@ -97,10 +80,6 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   rgb: {
     label: 'Aerial image (RGB)',
     urls: response => [response.rgbUrl],
-    render: ({ layer, mask }) => renderImage({
-      rgb: layer.images[0],
-      mask: mask,
-    }),
     min: _ => 0,
     max: _ => 255,
     palette: [],
@@ -108,13 +87,6 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   annualFlux: {
     label: 'Annual sunshine (flux)',
     urls: response => [response.annualFluxUrl],
-    render: ({ choice, layer, mask }) => renderImagePalette({
-      data: layer.images[0],
-      mask: mask,
-      palette: choice.palette,
-      min: choice.min(layer),
-      max: choice.max(layer),
-    }),
     min: _ => 0,
     max: _ => 2000,
     palette: fluxPalette,
@@ -122,16 +94,6 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   monthlyFlux: {
     label: 'Monthly sunshine (flux)',
     urls: response => [response.monthlyFluxUrl],
-    render: ({ choice, layer, mask, month }) => renderImagePalette({
-      data: {
-        ...layer.images[0],
-        bands: [layer.images[0].bands[month!]],
-      },
-      mask: mask,
-      palette: choice.palette,
-      min: choice.min(layer),
-      max: choice.max(layer),
-    }),
     min: _ => 0,
     max: _ => 200,
     palette: fluxPalette,
@@ -139,19 +101,6 @@ export const layerChoices: Record<LayerId, LayerChoice> = {
   hourlyShade: {
     label: 'Hourly shade',
     urls: response => response.hourlyShadeUrls,
-    render: ({ choice, layer, mask, month, day, hour }) => renderImagePalette({
-      data: {
-        ...layer.images[month!],
-        bands: [
-          layer.images[month!].bands[hour!]
-            .map(x => x & (1 << (day! - 1))),
-        ],
-      },
-      mask: mask,
-      palette: choice.palette,
-      min: choice.min(layer),
-      max: choice.max(layer),
-    }),
     min: _ => 0,
     max: _ => 1,
     palette: shadePalette,
@@ -178,18 +127,18 @@ export async function downloadLayer(args: {
   center: LatLng,
   googleMapsApiKey: string
 }): Promise<DataLayer> {
+  console.log('Download', args.layerId)
   const choice = layerChoices[args.layerId]
   const requests = choice.urls(args.response).map(url => downloadGeoTIFF(url, args.googleMapsApiKey))
-
-  const dw = metersToDegrees(args.sizeMeters / 2)
-  const dh = metersToDegrees(args.sizeMeters / 2)
+  const mask = await downloadGeoTIFF(args.response.maskUrl, args.googleMapsApiKey)
   return {
-    mask: await downloadGeoTIFF(args.response.maskUrl, args.googleMapsApiKey),
+    id: args.layerId,
+    mask: mask,
     images: await Promise.all(requests),
-    west: args.center.longitude - dw,
-    south: args.center.latitude - dh,
-    east: args.center.longitude + dw,
-    north: args.center.latitude + dh,
+    west: mask.sw.longitude,
+    south: mask.sw.latitude,
+    east: mask.ne.longitude,
+    north: mask.ne.latitude,
   }
 }
 
@@ -200,14 +149,31 @@ async function downloadGeoTIFF(url: string, apiKey: string): Promise<ImagePixels
   const geotiff = await fromArrayBuffer(arrayBuffer);
   const image = await geotiff.getImage()
   const rasters = await image.readRasters()
+
+  // Reproject the bounding box into coordinates.
+  const geoKeys = image.getGeoKeys()
+  const projObj = geokeysToProj4.toProj4(geoKeys)
+  const projection = proj4(projObj.proj4, "WGS84")
+  const box = image.getBoundingBox()
+  const sw = projection.forward({
+    x: box[0] * projObj.coordinatesConversionParameters.x,
+    y: box[1] * projObj.coordinatesConversionParameters.y,
+  })
+  const ne = projection.forward({
+    x: box[2] * projObj.coordinatesConversionParameters.x,
+    y: box[3] * projObj.coordinatesConversionParameters.y,
+  })
+
   return {
     width: rasters.width,
     height: rasters.height,
-    bands: Array.from({ length: rasters.length }, (_, i) => rasters[i].valueOf() as TypedArray)
+    rasters: Array.from({ length: rasters.length }, (_, i) => rasters[i].valueOf() as TypedArray),
+    ne: { longitude: ne.x, latitude: ne.y },
+    sw: { longitude: sw.x, latitude: sw.y },
   }
 }
 
-function renderImage({ rgb, mask }: { rgb: ImagePixels, mask: ImagePixels }) {
+export function renderImage({ rgb, mask }: { rgb: ImagePixels, mask: ImagePixels }) {
   // https://www.w3schools.com/tags/canvas_createimagedata.asp
   const canvas = document.createElement('canvas')
   canvas.width = mask.width
@@ -223,17 +189,17 @@ function renderImage({ rgb, mask }: { rgb: ImagePixels, mask: ImagePixels }) {
       const imgIdx = y * canvas.width * 4 + x * 4
       const rgbIdx = Math.floor(y * dh) * rgb.width + Math.floor(x * dw)
       const maskIdx = y * canvas.width + x
-      img.data[imgIdx + 0] = rgb.bands[0][rgbIdx]         // Red
-      img.data[imgIdx + 1] = rgb.bands[1][rgbIdx]         // Green
-      img.data[imgIdx + 2] = rgb.bands[2][rgbIdx]         // Blue
-      img.data[imgIdx + 3] = mask.bands[0][maskIdx] * 255 // Alpha
+      img.data[imgIdx + 0] = rgb.rasters[0][rgbIdx]         // Red
+      img.data[imgIdx + 1] = rgb.rasters[1][rgbIdx]         // Green
+      img.data[imgIdx + 2] = rgb.rasters[2][rgbIdx]         // Blue
+      img.data[imgIdx + 3] = mask.rasters[0][maskIdx] * 255 // Alpha
     }
   }
   ctx.putImageData(img, 0, 0)
   return canvas
 }
 
-function renderImagePalette(args: {
+export function renderImagePalette(args: {
   data: ImagePixels,
   mask: ImagePixels,
   palette?: string[],
@@ -247,7 +213,7 @@ function renderImagePalette(args: {
     b: parseInt(hex.substring(4, 6), 16),
   }))
   const step = (palette.length - 1) / (n - 1)
-  const colors = Array(n).fill(null).map((_, i) => {
+  const colors = Array(n).fill(0).map((_, i) => {
     const index = i * step
     const j = Math.floor(index)
     const k = Math.ceil(index)
@@ -258,7 +224,7 @@ function renderImagePalette(args: {
     }
   })
 
-  const indices = normalize(args.data.bands[0], {
+  const indices = normalize(args.data.rasters[0], {
     xMin: args.min,
     xMax: args.max,
     yMin: 0,
@@ -267,9 +233,8 @@ function renderImagePalette(args: {
 
   return renderImage({
     rgb: {
-      width: args.data.width,
-      height: args.data.height,
-      bands: [
+      ...args.data,
+      rasters: [
         indices.map(i => colors[i].r),
         indices.map(i => colors[i].g),
         indices.map(i => colors[i].b),
