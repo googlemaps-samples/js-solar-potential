@@ -36,7 +36,7 @@ export interface SolarPotential {
 
 export interface SizeAndSunshineStats {
   areaMeters2?: number
-  sunshineQuantiles?: number[]
+  sunshineQuantiles: number[]
   groundAreaMeters2?: number
 }
 

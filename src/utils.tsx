@@ -4,7 +4,28 @@ import { BoxGraphics, Entity } from 'resium';
 import { TypedArray } from 'geotiff';
 import { RoofSegmentSizeAndSunshineStats, SolarPanel } from './services/solar/buildingInsights';
 import { LatLng, LatLngBox } from './common';
-import { LayerId, getDataLayers } from './services/solar/dataLayers';
+import { DataLayersResponse, GeoTiffData, LayerId, downloadGeoTIFF, getDataLayers } from './services/solar/dataLayers';
+
+export interface DataLayer {
+  id: LayerId
+  images: HTMLCanvasElement[]
+  boundingBox: LatLngBox
+  masked: boolean
+  cache: {
+    hash: string,
+    data: GeoTiffData[]
+    mask: GeoTiffData
+  }
+  palette?: { colors: string[], min: number, max: number }
+  day?: number
+}
+
+const palettes = {
+  mask: ['212121', 'EEEEEE'],
+  dsm: ['3949AB', '81D4FA', '66BB6A', 'FFE082', 'E53935'],
+  flux: ['311B92', 'FF7043', 'FFB74D', 'FFE0B2'],
+  shade: ['212121', 'FFCA28'],
+}
 
 export async function flyTo({
   viewer,
@@ -102,6 +123,193 @@ export async function createSolarPanels({
   })
 }
 
+export async function renderDataLayer({
+  inputLayerId,
+  inputMask,
+  inputMonth,
+  inputDay,
+  dataLayer,
+  dataLayersResponse,
+  googleMapsApiKey,
+}: {
+  inputLayerId: LayerId,
+  inputMask: boolean,
+  inputMonth: number,
+  inputDay: number,
+  dataLayer: DataLayer | null,
+  dataLayersResponse: DataLayersResponse,
+  googleMapsApiKey: string,
+}) {
+  function isCacheValid(hash: string) {
+    return dataLayer?.cache.hash === hash
+      && dataLayer?.masked === inputMask
+      && dataLayer?.day === inputDay
+  }
+
+  const render: Record<LayerId, (() => Promise<DataLayer>)> = {
+    mask: async () => {
+      const hash = 'mask'
+      const mask = dataLayer && hash == dataLayer.cache.hash
+        ? dataLayer.cache.mask
+        : await downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey)
+      if (dataLayer && isCacheValid(hash)) {
+        return dataLayer
+      }
+      const palette = { colors: palettes.mask, min: 0, max: 1 }
+      return {
+        id: inputLayerId,
+        images: [renderImagePalette({
+          data: mask,
+          mask: inputMask ? mask : undefined,
+          palette: palette,
+        })],
+        masked: inputMask,
+        cache: { hash: hash, data: [], mask: mask },
+        boundingBox: mask.boundingBox,
+        palette: palette,
+      }
+    },
+    dsm: async () => {
+      const hash = 'dsm'
+      const [data, mask] = dataLayer && hash == dataLayer.cache.hash
+        ? [dataLayer.cache.data[0], dataLayer.cache.mask]
+        : await Promise.all([
+          downloadGeoTIFF(dataLayersResponse.dsmUrl, googleMapsApiKey),
+          downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey),
+        ])
+      if (dataLayer && isCacheValid(hash)) {
+        return dataLayer
+      }
+      const sortedValues = Array.from(data.rasters[0]).sort((x, y) => x - y)
+      const palette = {
+        colors: palettes.dsm,
+        min: sortedValues[0],
+        max: sortedValues[sortedValues.length - 1],
+      }
+      return {
+        id: inputLayerId,
+        images: [renderImagePalette({
+          data: data,
+          mask: inputMask ? mask : undefined,
+          palette: palette,
+        })],
+        masked: inputMask,
+        cache: { hash: hash, data: [data], mask: mask },
+        boundingBox: mask.boundingBox,
+        palette: palette,
+      }
+    },
+    rgb: async () => {
+      const hash = 'rgb'
+      const [data, mask] = dataLayer && hash == dataLayer.cache.hash
+        ? [dataLayer.cache.data[0], dataLayer.cache.mask]
+        : await Promise.all([
+          downloadGeoTIFF(dataLayersResponse.rgbUrl, googleMapsApiKey),
+          downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey),
+        ])
+      if (dataLayer && isCacheValid(hash)) {
+        return dataLayer
+      }
+      return {
+        id: inputLayerId,
+        images: [renderImageRGB({
+          rgb: data,
+          mask: inputMask ? mask : undefined,
+        })],
+        masked: inputMask,
+        cache: { hash: hash, data: [data], mask: mask },
+        boundingBox: mask.boundingBox,
+      }
+    },
+    annualFlux: async () => {
+      const hash = 'annualFlux'
+      const [data, mask] = dataLayer && hash == dataLayer.cache.hash
+        ? [dataLayer.cache.data[0], dataLayer.cache.mask]
+        : await Promise.all([
+          downloadGeoTIFF(dataLayersResponse.annualFluxUrl, googleMapsApiKey),
+          downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey),
+        ])
+      if (dataLayer && isCacheValid(hash)) {
+        return dataLayer
+      }
+      const palette = { colors: palettes.flux, min: 0, max: 2000 }
+      return {
+        id: inputLayerId,
+        images: [renderImagePalette({
+          data: data,
+          mask: inputMask ? mask : undefined,
+          palette: palette,
+        })],
+        masked: inputMask,
+        cache: { hash: hash, data: [data], mask: mask },
+        boundingBox: mask.boundingBox,
+        palette: palette,
+      }
+    },
+    monthlyFlux: async () => {
+      const hash = 'monthlyFlux'
+      const [data, mask] = dataLayer && hash == dataLayer.cache.hash
+        ? [dataLayer.cache.data[0], dataLayer.cache.mask]
+        : await Promise.all([
+          downloadGeoTIFF(dataLayersResponse.monthlyFluxUrl, googleMapsApiKey),
+          downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey),
+        ])
+      if (dataLayer && isCacheValid(hash)) {
+        return dataLayer
+      }
+      const palette = { colors: palettes.flux, min: 0, max: 200 }
+      return {
+        id: inputLayerId,
+        images: Array(12).fill(0).map((_, month) =>
+          renderImagePalette({
+            data: data,
+            mask: inputMask ? mask : undefined,
+            palette: palette,
+            index: month,
+          })
+        ),
+        masked: inputMask,
+        cache: { hash: hash, data: [data], mask: mask },
+        boundingBox: mask.boundingBox,
+        palette: palette,
+      }
+    },
+    hourlyShade: async () => {
+      const hash = `hourlyShade:${inputMonth}`
+      const [data, mask] = dataLayer && hash == dataLayer.cache.hash
+        ? [dataLayer.cache.data[0], dataLayer.cache.mask]
+        : await Promise.all([
+          downloadGeoTIFF(dataLayersResponse.hourlyShadeUrls[inputMonth], googleMapsApiKey),
+          downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey),
+        ])
+      if (dataLayer && isCacheValid(hash)) {
+        return dataLayer
+      }
+      const palette = { colors: palettes.shade, min: 0, max: 1 }
+      return {
+        id: inputLayerId,
+        images: Array(24).fill(0).map((_, hour) =>
+          renderImagePalette({
+            data: {
+              ...data,
+              rasters: data.rasters
+                .map(array => array.map(x => x & (1 << (inputDay - 1))))
+            },
+            mask: inputMask ? mask : undefined,
+            palette: palette,
+            index: hour,
+          })
+        ),
+        masked: inputMask,
+        cache: { hash: hash, data: [data], mask: mask },
+        boundingBox: mask.boundingBox,
+        palette: palette,
+      }
+    }
+  }
+  return render[inputLayerId]()
+}
+
 export function infoTable(info: Record<string, string | JSX.Element>) {
   return <table className="cesium-infoBox-defaultTable">
     {Object.keys(info).map((field, i) =>
@@ -123,6 +331,80 @@ export function boundingBoxSize(box: LatLngBox) {
   return Math.max(horizontal, vertical)
 }
 
+export function renderImageRGB({ rgb, mask }: {
+  rgb: GeoTiffData,
+  mask?: GeoTiffData
+}) {
+  // https://www.w3schools.com/tags/canvas_createimagedata.asp
+  const canvas = document.createElement('canvas')
+  canvas.width = mask ? mask.width : rgb.width
+  canvas.height = mask ? mask.height : rgb.height
+
+  const dw = rgb.width / canvas.width
+  const dh = rgb.height / canvas.height
+
+  const ctx = canvas.getContext('2d')!
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      const imgIdx = y * canvas.width * 4 + x * 4
+      const rgbIdx = Math.floor(y * dh) * rgb.width + Math.floor(x * dw)
+      const maskIdx = y * canvas.width + x
+      img.data[imgIdx + 0] = rgb.rasters[0][rgbIdx]  // Red
+      img.data[imgIdx + 1] = rgb.rasters[1][rgbIdx]  // Green
+      img.data[imgIdx + 2] = rgb.rasters[2][rgbIdx]  // Blue
+      img.data[imgIdx + 3] = mask                    // Alpha
+        ? mask.rasters[0][maskIdx] * 255
+        : 255
+    }
+  }
+  ctx.putImageData(img, 0, 0)
+  return canvas
+}
+
+export function renderImagePalette({ data, mask, palette, index }: {
+  data: GeoTiffData,
+  palette: { colors: string[], min: number, max: number }
+  mask?: GeoTiffData,
+  index?: number,
+}) {
+  const n = 256
+  const colors = palette.colors.map(hex => ({
+    r: parseInt(hex.substring(0, 2), 16),
+    g: parseInt(hex.substring(2, 4), 16),
+    b: parseInt(hex.substring(4, 6), 16),
+  }))
+  const step = (colors.length - 1) / (n - 1)
+  const pixels = Array(n).fill(0).map((_, i) => {
+    const index = i * step
+    const j = Math.floor(index)
+    const k = Math.ceil(index)
+    return {
+      r: lerp(colors[j].r, colors[k].r, index - j),
+      g: lerp(colors[j].g, colors[k].g, index - j),
+      b: lerp(colors[j].b, colors[k].b, index - j),
+    }
+  })
+
+  const indices = normalize(data.rasters[index ?? 0], {
+    xMin: palette.min,
+    xMax: palette.max,
+    yMin: 0,
+    yMax: n - 1,
+  }).map(Math.round)
+
+  return renderImageRGB({
+    rgb: {
+      ...data,
+      rasters: [
+        indices.map((i: number) => pixels[i].r),
+        indices.map((i: number) => pixels[i].g),
+        indices.map((i: number) => pixels[i].b),
+      ],
+    },
+    mask: mask,
+  })
+}
 export function normalize(array: TypedArray, args: { xMin?: number, xMax?: number, yMin?: number, yMax?: number }) {
   const xMin = args.xMin ?? 0
   const xMax = args.xMax ?? 1

@@ -28,5 +28,6 @@ export LOCATION="us-central1"
 gcloud run deploy "solar-potential" \
   --source="." \
   --region="$LOCATION" \
-  --set-env-vars="VITE_GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,VITE_CESIUM_API_KEY=$CESIUM_API_KEY"
+  --set-env-vars="VITE_GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,VITE_CESIUM_API_KEY=$CESIUM_API_KEY" \
+  --allow-unauthenticated
 ```

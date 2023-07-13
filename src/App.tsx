@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ReactDOMServer from 'react-dom/server'
 import * as Cesium from 'cesium'
-import { Entity, BoxGraphics, RectangleGraphics } from 'resium'
+import { Entity, RectangleGraphics } from 'resium'
 
 import CssBaseline from '@mui/material/CssBaseline'
 import {
@@ -20,38 +20,24 @@ import {
   Switch,
 } from '@mui/material'
 
-import { boundingBoxSize, createSolarPanels, flyTo } from './utils'
+import { DataLayer, boundingBoxSize, createSolarPanels, flyTo, renderDataLayer } from './utils'
 
 import Map from './components/Map'
 import SearchBar from './components/SearchBar'
 import Show from './components/Show'
 
 import { BuildingInsightsResponse, findClosestBuilding } from './services/solar/buildingInsights'
-import { DataLayersResponse, LayerId, getDataLayers, layerChoices, renderImage as renderImageRGB, renderImagePalette, downloadGeoTIFF } from './services/solar/dataLayers'
+import { DataLayersResponse, LayerId, getDataLayers } from './services/solar/dataLayers'
 import { Typography } from '@mui/material'
 import DataLayerChoice from './components/DataLayerChoice'
-import { LatLng, LatLngBox } from './common'
+import { LatLng } from './common'
 import SolarDetails from './components/SolarDetails'
 import Palette from './components/Palette'
 
 const cesiumApiKey = import.meta.env.VITE_CESIUM_API_KEY
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
-interface DataLayer {
-  id: LayerId
-  images: HTMLCanvasElement[]
-  boundingBox: LatLngBox
-  palette?: { colors: string[], min: number, max: number }
-}
-
 const sidebarWidth = 400
-
-const palettes = {
-  mask: ['212121', 'EEEEEE'],
-  dsm: ['3949AB', '81D4FA', '66BB6A', 'FFE082', 'E53935'],
-  flux: ['311B92', 'FF7043', 'FFB74D', 'FFE0B2'],
-  shade: ['212121', 'FFCA28'],
-}
 
 // https://materialui.co/colors
 const roofColors = [
@@ -79,7 +65,7 @@ export default function App() {
   const mapRef = useRef<{ cesiumElement: Cesium.Viewer }>(null)
 
   // Inputs from the UI.
-  const [inputLayerId, setInputDataLayer] = useState<LayerId | null>('dsm')
+  const [inputLayerId, setInputDataLayer] = useState<LayerId | null>('annualFlux')
   const [inputMonth, setInputMonth] = useState(0)
   const [inputDay, setInputDay] = useState(0)
   const [inputHour, setInputHour] = useState(0)
@@ -99,6 +85,7 @@ export default function App() {
   // Map entities cache since they're expensive to create.
   const [solarPanels, setSolarPanels] = useState<JSX.Element[]>([])
   const [dataLayer, setDataLayer] = useState<DataLayer | null>(null)
+  const [loadingLayer, setLoadingLayer] = useState(false)
 
   // Callbacks to cancel animations.
   const [removeOrbit, setRemoveOrbit] = useState<any>()
@@ -194,57 +181,6 @@ export default function App() {
       return setErrorLayer(dataLayersResponse.error)
     }
     setDataLayersResponse(dataLayersResponse)
-  }
-
-  async function createDataLayer({
-    layerId,
-    dataLayersResponse,
-  }: {
-    layerId: LayerId,
-    dataLayersResponse: DataLayersResponse,
-  }) {
-    // Download the GeoTIFF data values for the layers we want.
-    console.log('Downloading layer:', layerId)
-    const maskPromise = downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey)
-    const render: Record<LayerId, (() => Promise<DataLayer>)> = {
-      mask: async () => {
-        const mask = await maskPromise
-        const palette = { colors: palettes.mask, min: 0, max: 1 }
-        return {
-          id: layerId,
-          images: [renderImagePalette({
-            data: mask,
-            mask: inputMask ? mask : undefined,
-            palette: palette,
-          })],
-          boundingBox: mask.boundingBox,
-          palette: palette,
-        }
-      },
-      dsm: async () => {
-        const [data, mask] = await Promise.all([
-          downloadGeoTIFF(dataLayersResponse.dsmUrl, googleMapsApiKey),
-          maskPromise,
-        ])
-        const sortedValues = Array.from(data.rasters[0]).sort()
-        const palette = {
-          colors: palettes.dsm,
-          min: sortedValues[sortedValues.length - 1],
-          max: sortedValues[0],
-        }
-        return {
-          id: layerId,
-          images: [renderImagePalette({
-            data: data,
-            mask: inputMask ? mask : undefined,
-            palette: palette,
-          })],
-          boundingBox: mask.boundingBox,
-          palette: palette,
-        }
-      },
-    }
-    return render[layerId]()
   }
 
   const mapRoofSegmentPins = inputShowPanelCounts && buildingResponse && solarConfigs
@@ -345,11 +281,20 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (inputLayerId && buildingResponse && dataLayersResponse) {
-      createDataLayer({
-        layerId: inputLayerId,
+    if (inputLayerId && buildingResponse && dataLayersResponse && !loadingLayer) {
+      setLoadingLayer(true)
+      renderDataLayer({
+        inputLayerId: inputLayerId,
+        inputMask: inputMask,
+        inputMonth: inputMonth,
+        inputDay: inputDay,
         dataLayersResponse: dataLayersResponse,
-      }).then(layer => setDataLayer(layer))
+        dataLayer: dataLayer,
+        googleMapsApiKey: googleMapsApiKey,
+      }).then(layer => {
+        setDataLayer(layer)
+        setLoadingLayer(false)
+      })
         .catch((error: any) => {
           console.error(error)
           setErrorLayer(error)
@@ -571,7 +516,7 @@ export default function App() {
         }}
       >
         {mapRoofSegmentPins}
-        {solarPanels}
+        {solarPanels.slice(0, solarConfigs?.at(solarConfigIdx)?.panelsCount ?? 0)}
         {mapDataLayerEntity}
       </Map>
     </Box>

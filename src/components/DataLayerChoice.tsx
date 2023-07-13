@@ -1,5 +1,32 @@
 import { Autocomplete, Box, FormControlLabel, Grid, LinearProgress, Slider, Stack, Switch, TextField, Typography } from "@mui/material"
-import { DataLayerDeprecated, LayerId, layerChoices } from "../services/solar/dataLayers"
+import { LayerId } from "../services/solar/dataLayers"
+
+const choices: Record<LayerId, { label: string, description: string }> = {
+  mask: {
+    label: "Roof mask",
+    description: "The building mask image: one bit per pixel saying whether that pixel is considered to be part of a rooftop or not.",
+  },
+  dsm: {
+    label: "Elevation (DSM)",
+    description: "An image of the DSM (digital surface map) of the region. Values are in meters above EGM96 geoid (i.e., sea level). Invalid locations (where we don't have data) are stored as -9999",
+  },
+  rgb: {
+    label: "Aerial photo (RGB)",
+    description: "An image of RGB data (aerial photo) of the region.",
+  },
+  annualFlux: {
+    label: "Annual sunshine (flux)",
+    description: "The annual flux map (annual sunlight on roofs) of the region. Values are kWh/kW/year. This is unmasked flux: flux is computed for every location, not just building rooftops. Invalid locations are stored as -9999: locations outside our coverage area will be invalid, and a few locations inside the coverage area, where we were unable to calculate flux, will also be invalid.",
+  },
+  monthlyFlux: {
+    label: "Monthly sunshine (flux)",
+    description: "The monthly flux map (sunlight on roofs, broken down by month) of the region. Values are kWh/kW/year. The GeoTIFF pointed to by this URL will contain twelve bands, corresponding to January...December, in order.",
+  },
+  hourlyShade: {
+    label: "Hourly shade",
+    description: "Twelve URLs for hourly shade, corresponding to January...December, in order. Each GeoTIFF will contain 24 bands, corresponding to the 24 hours of the day. Each pixel is a 32 bit integer, corresponding to the (up to) 31 days of that month; a 1 bit means that the corresponding location is able to see the sun at that day, of that hour, of that month. Invalid locations are stored as -9999 (since this is negative, it has bit 31 set, and no valid value could have bit 31 set as that would correspond to the 32nd day of the month).",
+  },
+}
 
 interface Props {
   layerId: LayerId | null
@@ -94,15 +121,6 @@ export default function DataLayerChoice(props: Props) {
     label="Play animation"
   />
 
-  const descriptions: Record<LayerId, string> = {
-    mask: "The building mask image: one bit per pixel saying whether that pixel is considered to be part of a rooftop or not.",
-    dsm: "An image of the DSM (digital surface map) of the region. Values are in meters above EGM96 geoid (i.e., sea level). Invalid locations (where we don't have data) are stored as -9999",
-    rgb: "An image of RGB data (aerial photo) of the region.",
-    annualFlux: "The annual flux map (annual sunlight on roofs) of the region. Values are kWh/kW/year. This is unmasked flux: flux is computed for every location, not just building rooftops. Invalid locations are stored as -9999: locations outside our coverage area will be invalid, and a few locations inside the coverage area, where we were unable to calculate flux, will also be invalid.",
-    monthlyFlux: "The monthly flux map (sunlight on roofs, broken down by month) of the region. Values are kWh/kW/year. The GeoTIFF pointed to by this URL will contain twelve bands, corresponding to January...December, in order.",
-    hourlyShade: "Twelve URLs for hourly shade, corresponding to January...December, in order. Each GeoTIFF will contain 24 bands, corresponding to the 24 hours of the day. Each pixel is a 32 bit integer, corresponding to the (up to) 31 days of that month; a 1 bit means that the corresponding location is able to see the sun at that day, of that hour, of that month. Invalid locations are stored as -9999 (since this is negative, it has bit 31 set, and no valid value could have bit 31 set as that would correspond to the 32nd day of the month).",
-  }
-
   const controls: Record<LayerId, JSX.Element> = {
     mask: maskSwitch,
     dsm: maskSwitch,
@@ -117,6 +135,7 @@ export default function DataLayerChoice(props: Props) {
       {monthSlider}
       {daySlider}
       {hourSlider}
+      {maskSwitch}
       {animationSwitch}
     </Stack>,
   }
@@ -129,8 +148,8 @@ export default function DataLayerChoice(props: Props) {
         <TextField {...params} variant="standard" label="Data layer" />
       }
       value={props.layerId}
-      options={Object.keys(layerChoices) as LayerId[]}
-      getOptionLabel={(id: LayerId) => layerChoices[id].label}
+      options={Object.keys(choices) as LayerId[]}
+      getOptionLabel={(id: LayerId) => choices[id].label}
       onChange={(_, layerId) => props.onChange(layerId!)}
     />
 
@@ -144,7 +163,7 @@ export default function DataLayerChoice(props: Props) {
           : <>
             <Box py={1}>
               <Typography variant='body2' fontSize='small' fontStyle={{ color: '#616161' }}>
-                {descriptions[props.layerId]}
+                {choices[props.layerId].description}
               </Typography>
             </Box>
             {controls[props.layerId]}
