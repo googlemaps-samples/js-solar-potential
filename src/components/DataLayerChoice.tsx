@@ -1,9 +1,9 @@
 import { Autocomplete, Box, FormControlLabel, Grid, LinearProgress, Slider, Stack, Switch, TextField, Typography } from "@mui/material"
-import { DataLayer, LayerId, layerChoices } from "../services/solar/dataLayers"
+import { DataLayerDeprecated, LayerId, layerChoices } from "../services/solar/dataLayers"
 
 interface Props {
-  layerId: LayerId
-  layer: DataLayer | null
+  layerId: LayerId | null
+  loading: boolean
   month: { get: number, set: (x: number) => void }
   day: { get: number, set: (x: number) => void }
   hour: { get: number, set: (x: number) => void }
@@ -139,8 +139,9 @@ export default function DataLayerChoice(props: Props) {
         <Typography variant='overline'>Data layer not available</Typography>
       </Grid>
       : props.layerId
-        ? props.layer
-          ? <>
+        ? props.loading
+          ? <LinearProgress />
+          : <>
             <Box py={1}>
               <Typography variant='body2' fontSize='small' fontStyle={{ color: '#616161' }}>
                 {descriptions[props.layerId]}
@@ -148,7 +149,6 @@ export default function DataLayerChoice(props: Props) {
             </Box>
             {controls[props.layerId]}
           </>
-          : <LinearProgress />
         : null
     }
 

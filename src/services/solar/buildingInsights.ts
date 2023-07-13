@@ -18,14 +18,14 @@ export interface BuildingInsightsResponse {
 }
 
 export interface SolarPotential {
-  maxArrayPanelsCount: number
-  panelCapacityWatts: number
-  panelHeightMeters: number
-  panelWidthMeters: number
-  panelLifetimeYears: number
-  maxArrayAreaMeters2: number
-  maxSunshineHoursPerYear: number
-  carbonOffsetFactorKgPerMwh: number
+  maxArrayPanelsCount?: number
+  panelCapacityWatts?: number
+  panelHeightMeters?: number
+  panelWidthMeters?: number
+  panelLifetimeYears?: number
+  maxArrayAreaMeters2?: number
+  maxSunshineHoursPerYear?: number
+  carbonOffsetFactorKgPerMwh?: number
   wholeRoofStats: SizeAndSunshineStats
   buildingStats: SizeAndSunshineStats
   roofSegmentStats: RoofSegmentSizeAndSunshineStats[]
@@ -35,25 +35,25 @@ export interface SolarPotential {
 }
 
 export interface SizeAndSunshineStats {
-  areaMeters2: number
-  sunshineQuantiles: number[]
-  groundAreaMeters2: number
+  areaMeters2?: number
+  sunshineQuantiles?: number[]
+  groundAreaMeters2?: number
 }
 
 export interface RoofSegmentSizeAndSunshineStats {
-  pitchDegrees: number
-  azimuthDegrees: number
+  pitchDegrees?: number
+  azimuthDegrees?: number
   stats: SizeAndSunshineStats
   center: LatLng
   boundingBox: LatLngBox
-  planeHeightAtCenterMeters: number
+  planeHeightAtCenterMeters?: number
 }
 
 export interface SolarPanel {
   center: LatLng
   orientation: 'LANDSCAPE' | 'PORTRAIT'
-  segmentIndex: number
-  yearlyEnergyDcKwh: number
+  segmentIndex?: number
+  yearlyEnergyDcKwh?: number
 }
 
 export interface SolarPanelConfig {

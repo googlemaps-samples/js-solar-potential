@@ -20,32 +20,41 @@ import {
   Switch,
 } from '@mui/material'
 
-import { boundingBoxSize } from './utils'
+import { boundingBoxSize, createSolarPanels, flyTo } from './utils'
 
 import Map from './components/Map'
 import SearchBar from './components/SearchBar'
 import Show from './components/Show'
 
 import { BuildingInsightsResponse, findClosestBuilding } from './services/solar/buildingInsights'
-import { DataLayer, DataLayersResponse, LayerId, downloadLayer, getDataLayers, layerChoices, renderImage as renderImageRGB, renderImagePalette } from './services/solar/dataLayers'
+import { DataLayersResponse, LayerId, getDataLayers, layerChoices, renderImage as renderImageRGB, renderImagePalette, downloadGeoTIFF } from './services/solar/dataLayers'
 import { Typography } from '@mui/material'
 import DataLayerChoice from './components/DataLayerChoice'
-import { LatLng } from './common'
+import { LatLng, LatLngBox } from './common'
 import SolarDetails from './components/SolarDetails'
 import Palette from './components/Palette'
 
 const cesiumApiKey = import.meta.env.VITE_CESIUM_API_KEY
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
+interface DataLayer {
+  id: LayerId
+  images: HTMLCanvasElement[]
+  boundingBox: LatLngBox
+  palette?: { colors: string[], min: number, max: number }
+}
+
 const sidebarWidth = 400
 
-/* TODO:
-- Finalize color palettes
-- Reactive design
-*/
+const palettes = {
+  mask: ['212121', 'EEEEEE'],
+  dsm: ['3949AB', '81D4FA', '66BB6A', 'FFE082', 'E53935'],
+  flux: ['311B92', 'FF7043', 'FFB74D', 'FFE0B2'],
+  shade: ['212121', 'FFCA28'],
+}
 
 // https://materialui.co/colors
-const colors = [
+const roofColors = [
   '#E53935',  // 600 Red
   '#1E88E5',  // 600 Blue
   '#43A047',  // 600 Green
@@ -65,35 +74,37 @@ const colors = [
   '#BA68C8',  // 300 Purple
 ]
 
+
 export default function App() {
   const mapRef = useRef<{ cesiumElement: Cesium.Viewer }>(null)
 
+  // Inputs from the UI.
+  const [inputLayerId, setInputDataLayer] = useState<LayerId | null>('dsm')
+  const [inputMonth, setInputMonth] = useState(0)
+  const [inputDay, setInputDay] = useState(0)
+  const [inputHour, setInputHour] = useState(0)
+  const [inputMask, setInputMask] = useState(true)
+  const [inputAnimation, setInputAnimation] = useState(true)
+  const [inputMonthlyKwh, setInputMonthlyKwh] = useState(0)
+  const [inputShowPanelCounts, setInputShowPanelCounts] = useState(false)
+  const [inputShowPanels, setInputShowPanels] = useState(true)
+
   // App state.
-  const [building, setBuildingInsights] = useState<BuildingInsightsResponse | null>(null)
+  const [openMoreDetails, setOpenMoreDetails] = useState(false)
+  const [buildingResponse, setBuildingResponse] = useState<BuildingInsightsResponse | null>(null)
   const [dataLayersResponse, setDataLayersResponse] = useState<DataLayersResponse | null>(null)
-  const [layer, setLayer] = useState<DataLayer | null>(null)
+  const [errorBuilding, setErrorBuilding] = useState<any>()
+  const [errorLayer, setErrorLayer] = useState<any>()
+
+  // Map entities cache since they're expensive to create.
+  const [solarPanels, setSolarPanels] = useState<JSX.Element[]>([])
+  const [dataLayer, setDataLayer] = useState<DataLayer | null>(null)
+
+  // Callbacks to cancel animations.
   const [removeOrbit, setRemoveOrbit] = useState<any>()
   const [removeLayerAnimation, setRemoveLayerAnimation] = useState<any>()
-  const [errorBuilding, setErrorBuilding] = useState<any>(null)
-  const [errorLayer, setErrorLayer] = useState<any>(null)
-  const [openMoreDetails, setOpenMoreDetails] = useState(false)
 
-  // Map entities.
-  const [solarPanels, setSolarPanels] = useState<JSX.Element[]>([])
-  const [layerImages, setLayerImages] = useState<HTMLCanvasElement[]>([])
-
-  // Inputs from the UI.
-  const [inputMonthlyKwh, setInputMonthlyKwh] = useState<number>(1000)
-  const [inputLayerId, setInputDataLayer] = useState<LayerId>('monthlyFlux')
-  const [inputMonth, setInputMonth] = useState<number>(0)
-  const [inputDay, setInputDay] = useState<number>(0)
-  const [inputHour, setInputHour] = useState<number>(0)
-  const [inputMask, setInputMask] = useState<boolean>(true)
-  const [inputAnimation, setInputAnimation] = useState<boolean>(true)
-  const [inputShowPanels, setInputShowPanels] = useState<boolean>(true)
-  const [inputShowPanelCounts, setInputShowPanelCounts] = useState<boolean>(false)
-
-  const solarConfigs = building?.solarPotential?.solarPanelConfigs
+  const solarConfigs = buildingResponse?.solarPotential?.solarPanelConfigs
   const solarConfigMaybeIdx = solarConfigs
     ? solarConfigs.findIndex(config => config.yearlyEnergyDcKwh >= inputMonthlyKwh * 12)
     : 0
@@ -102,241 +113,149 @@ export default function App() {
     : solarConfigMaybeIdx
 
   async function showSolarPotential(point: LatLng) {
-    setBuildingInsights(null)
-    setLayer(null)
-    setSolarPanels([])
-    setLayerImages([])
-    setErrorLayer(null)
+    // Clear API responses and errors.
+    setBuildingResponse(null)
+    setDataLayersResponse(null)
     setErrorBuilding(null)
+    setErrorLayer(null)
 
-    const buildingPromise = findClosestBuilding(point, googleMapsApiKey)
-    const building = await buildingPromise
-    if ('error' in building) {
-      console.error(building.error)
-      return setErrorBuilding(building.error)
+    // Clear entity caches.
+    setSolarPanels([])
+    setDataLayer(null)
+
+    // Get the building insights from the Solar API.
+    const buildingResponse = await findClosestBuilding(point, googleMapsApiKey)
+    if ('error' in buildingResponse) {
+      console.error(buildingResponse.error)
+      return setErrorBuilding(buildingResponse.error)
     }
-    setBuildingInsights(building)
+    setBuildingResponse(buildingResponse)
 
-    const viewer = mapRef?.current?.cesiumElement!
-    const buildingPosition = Cesium.Cartesian3.fromDegrees(building.center.longitude, building.center.latitude)
-    const location = (await viewer.scene.clampToHeightMostDetailed([buildingPosition]))[0]
-    const range = boundingBoxSize(building.boundingBox) * 2
-    const offset = new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-30), range)
-    viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
-    if (removeOrbit) {
-      removeOrbit()
-    }
-    viewer.camera.flyToBoundingSphere(
-      new Cesium.BoundingSphere(location),
-      {
-        offset: offset,
-        complete: () => {
-          // Lock the camera onto a point.
-          viewer.scene.camera.lookAtTransform(
-            Cesium.Transforms.eastNorthUpToFixedFrame(location),
-            offset,
-          )
-          // Orbit around this point.
-          const unsubscribe = viewer.clock.onTick.addEventListener(() =>
-            viewer.camera.rotateRight(-0.0002)
-          )
-          setRemoveOrbit(() => unsubscribe)
-        }
-      }
-    )
-
-    const maxYearlyPotential = building.solarPotential.solarPanelConfigs.slice(-1)[0].yearlyEnergyDcKwh
+    // Set the initial montly KWh to 80% of the building's capacity.
+    const maxYearlyPotential = buildingResponse.solarPotential.solarPanelConfigs.slice(-1)[0].yearlyEnergyDcKwh
     setInputMonthlyKwh(maxYearlyPotential / 12 * 0.8)
 
-    const panelPositions = building.solarPotential.solarPanels
-      .map(panel => Cesium.Cartesian3.fromDegrees(panel.center.longitude, panel.center.latitude))
-
-    const clampedPositions = await viewer.scene.clampToHeightMostDetailed(panelPositions, [], building.solarPotential.panelWidthMeters)
-    setSolarPanels(building.solarPotential.solarPanels.map((panel, i) => {
-      const roofIdx = panel.segmentIndex ?? 0
-      const roof = building.solarPotential.roofSegmentStats[roofIdx]
-      const position = clampedPositions[i]
-      const [width, height] = panel.orientation == 'LANDSCAPE'
-        ? [building.solarPotential.panelWidthMeters, building.solarPotential.panelHeightMeters]
-        : [building.solarPotential.panelHeightMeters, building.solarPotential.panelWidthMeters]
-      const azimuth = roof.azimuthDegrees ?? 0
-      const pitch = roof.pitchDegrees ?? 0
-      const color = colors[roofIdx % colors.length]
-      const panelInfo = building.solarPotential.solarPanels[i]
-      const roofInfo = building.solarPotential.roofSegmentStats[roofIdx]
-      return <Entity key={i}
-        name={`Solar panel ${i}`}
-        description={ReactDOMServer.renderToStaticMarkup(
-          <table className="cesium-infoBox-defaultTable">
-            <tr>
-              <td>Latitude</td>
-              <td>{panelInfo.center.latitude.toFixed(7)}</td>
-            </tr>
-            <tr>
-              <td>Longitude</td>
-              <td>{panelInfo.center.longitude.toFixed(7)}</td>
-            </tr>
-            <tr>
-              <td>Orientation</td>
-              <td>{panelInfo.orientation}</td>
-            </tr>
-            <tr>
-              <td>Yearly energy</td>
-              <td>{panelInfo.yearlyEnergyDcKwh.toFixed(1)} DC KWh</td>
-            </tr>
-            <tr>
-              <td>Roof segment</td>
-              <td>
-                <span style={{ color: color }}>█ &nbsp;</span>
-                <span>{panelInfo.segmentIndex ?? 0}</span>
-              </td>
-            </tr>
-            <tr>
-              <td>Pitch</td>
-              <td>{roofInfo?.pitchDegrees?.toFixed(1) ?? 0}°</td>
-            </tr>
-            <tr>
-              <td>Azimuth</td>
-              <td>{roofInfo?.azimuthDegrees?.toFixed(1) ?? 0}°</td>
-            </tr>
-          </table>
-        )}
-        position={position}
-        orientation={Cesium.Transforms.headingPitchRollQuaternion(
-          position,
-          Cesium.HeadingPitchRoll.fromDegrees(azimuth + 90, pitch, 0)
-        )}
-        height={1}
-      >
-        <BoxGraphics
-          dimensions={new Cesium.Cartesian3(width, height, 1)}
-          material={Cesium.Color.fromCssColorString(color).withAlpha(0.8)}
-          outline={true}
-          outlineColor={Cesium.Color.BLACK}
-        />
-      </Entity>
-    }))
-
-    showDataLayer(building, inputLayerId)
-  }
-
-  async function showDataLayer(building: BuildingInsightsResponse, inputLayerId: LayerId) {
-    if (!inputLayerId) {
-      return
-    }
-
-    const sizeMeters = boundingBoxSize(building.boundingBox)
-    const response = await getDataLayers(building.center, sizeMeters / 2, googleMapsApiKey)
-    if ('error' in response) {
-      console.error(response.error)
-      setDataLayersResponse(null)
-      return setErrorLayer(response.error)
-    }
-    setDataLayersResponse(response)
-    const layer = await downloadLayer({
-      response: response,
-      layerId: inputLayerId,
-      sizeMeters: sizeMeters,
-      center: building.center,
-      googleMapsApiKey: googleMapsApiKey,
+    // Fly to the location.
+    const viewer = mapRef?.current?.cesiumElement!
+    flyTo({
+      viewer: viewer,
+      point: buildingResponse.center,
+      cameraAngle: Cesium.Math.toRadians(-30),
+      cameraDistance: boundingBoxSize(buildingResponse.boundingBox) * 2,
+      onStart: () => {
+        // Unlock the camera.
+        viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
+        // Remove the orbit animation, if any.
+        if (removeOrbit) {
+          removeOrbit()
+        }
+      },
+      onEnd: ({ position, offset }) => {
+        // Lock the camera onto a point.
+        viewer.scene.camera.lookAtTransform(
+          Cesium.Transforms.eastNorthUpToFixedFrame(position),
+          offset,
+        )
+        // Start the orbit animation.
+        const unsubscribe = viewer.clock.onTick.addEventListener(() =>
+          viewer.camera.rotateRight(-0.0002)
+        )
+        setRemoveOrbit(() => unsubscribe)
+      },
     })
 
-    switch (inputLayerId) {
-      case 'monthlyFlux':
-        setLayerImages(Array(12).fill(0).map((_, inputMonth) =>
-          renderLayerImage(layer, inputMonth, inputDay, inputHour)
-        ))
-        break
-      case 'hourlyShade':
-        setLayerImages(Array(24).fill(0).map((_, inputHour) =>
-          renderLayerImage(layer, inputMonth, inputDay, inputHour)
-        ))
-        break
-      default:
-        setLayerImages([renderLayerImage(layer, inputMonth, inputDay, inputHour)])
+    // Create the solar panel entities for the map.
+    createSolarPanels({
+      viewer: viewer,
+      roofSegments: buildingResponse.solarPotential.roofSegmentStats,
+      panels: buildingResponse.solarPotential.solarPanels,
+      panelWidth: buildingResponse.solarPotential.panelWidthMeters ?? 0,
+      panelHeight: buildingResponse.solarPotential.panelHeightMeters ?? 0,
+      colors: roofColors,
+      info: (panel, roof, color) => ({
+        'Latitude': panel.center.latitude.toFixed(7),
+        'Longitude': panel.center.latitude.toFixed(7),
+        'Orientation': panel.orientation,
+        'Yearly energy': `${panel.yearlyEnergyDcKwh} DC KWh`,
+        'Roof segment': <>
+          <span style={{ color: color }}>█ &nbsp;</span>
+          <span>{panel.segmentIndex ?? 0}</span>
+        </>,
+        'Pitch': `${roof.pitchDegrees}°`,
+        'Azimuth': `${roof.azimuthDegrees}°`,
+      }),
+    }).then(panels => setSolarPanels(panels))
+
+    // Get the data layer URLs from the Solar API.
+    const radius = boundingBoxSize(buildingResponse.boundingBox) / 2
+    const dataLayersResponse = await getDataLayers(buildingResponse.center, radius, googleMapsApiKey)
+    if ('error' in dataLayersResponse) {
+      console.error(dataLayersResponse.error)
+      return setErrorLayer(dataLayersResponse.error)
     }
-    setLayer(layer)
+    setDataLayersResponse(dataLayersResponse)
   }
 
-  function renderLayerImage(layer: DataLayer, inputMonth: number, inputDay: number, inputHour: number) {
-    const mask = inputMask
-      ? layer.mask
-      : { ...layer.mask, rasters: [layer.mask.rasters[0].map((_: any) => 1)] }
-
-    console.log('Render', layer, { month: inputMonth, day: inputDay, hour: inputHour })
-
-    const choice = layerChoices[layer.id]
-    const render: Record<LayerId, () => HTMLCanvasElement> = {
-      mask: () => renderImagePalette({
-        data: layer.images[0],
-        mask: mask,
-        palette: choice.palette,
-        min: choice.min(layer),
-        max: choice.max(layer),
-      }),
-      dsm: () => renderImagePalette({
-        data: layer.images[0],
-        mask: mask,
-        palette: choice.palette,
-        min: choice.min(layer),
-        max: choice.max(layer),
-      }),
-      rgb: () => renderImageRGB({
-        rgb: layer.images[0],
-        mask: mask,
-      }),
-      annualFlux: () => renderImagePalette({
-        data: layer.images[0],
-        mask: mask,
-        palette: choice.palette,
-        min: choice.min(layer),
-        max: choice.max(layer),
-      }),
-      monthlyFlux: () => renderImagePalette({
-        data: {
-          ...layer.images[0],
-          rasters: [layer.images[0].rasters[inputMonth]],
-        },
-        mask: mask,
-        palette: choice.palette,
-        min: choice.min(layer),
-        max: choice.max(layer),
-      }),
-      hourlyShade: () => renderImagePalette({
-        data: {
-          ...layer.images[inputMonth],
-          rasters: [
-            layer.images[inputMonth].rasters[inputHour]
-              .map((x: number) => x & (1 << (inputDay - 1))),
-          ],
-        },
-        mask: mask,
-        palette: choice.palette,
-        min: choice.min(layer),
-        max: choice.max(layer),
-      }),
+  async function createDataLayer({
+    layerId,
+    dataLayersResponse,
+  }: {
+    layerId: LayerId,
+    dataLayersResponse: DataLayersResponse,
+  }) {
+    // Download the GeoTIFF data values for the layers we want.
+    console.log('Downloading layer:', layerId)
+    const maskPromise = downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey)
+    const render: Record<LayerId, (() => Promise<DataLayer>)> = {
+      mask: async () => {
+        const mask = await maskPromise
+        const palette = { colors: palettes.mask, min: 0, max: 1 }
+        return {
+          id: layerId,
+          images: [renderImagePalette({
+            data: mask,
+            mask: inputMask ? mask : undefined,
+            palette: palette,
+          })],
+          boundingBox: mask.boundingBox,
+          palette: palette,
+        }
+      },
+      dsm: async () => {
+        const [data, mask] = await Promise.all([
+          downloadGeoTIFF(dataLayersResponse.dsmUrl, googleMapsApiKey),
+          maskPromise,
+        ])
+        const sortedValues = Array.from(data.rasters[0]).sort()
+        const palette = {
+          colors: palettes.dsm,
+          min: sortedValues[sortedValues.length - 1],
+          max: sortedValues[0],
+        }
+        return {
+          id: layerId,
+          images: [renderImagePalette({
+            data: data,
+            mask: inputMask ? mask : undefined,
+            palette: palette,
+          })],
+          boundingBox: mask.boundingBox,
+          palette: palette,
+        }
+      },
     }
-    return render[layer.id]()
+    return render[layerId]()
   }
 
-  const getLayerImage: Record<LayerId, HTMLCanvasElement> = {
-    mask: layerImages[0],
-    dsm: layerImages[0],
-    rgb: layerImages[0],
-    annualFlux: layerImages[0],
-    monthlyFlux: layerImages[inputMonth],
-    hourlyShade: layerImages[inputHour],
-  }
-
-  const mapRoofSegmentPins = inputShowPanelCounts && building && solarConfigs
+  const mapRoofSegmentPins = inputShowPanelCounts && buildingResponse && solarConfigs
     ? solarConfigs[solarConfigIdx].roofSegmentSummaries
       .map((segment, i) => {
         const idx = segment.segmentIndex ?? 0
         const viewer = mapRef?.current?.cesiumElement!
-        const roof = building.solarPotential.roofSegmentStats[idx]
+        const roof = buildingResponse.solarPotential.roofSegmentStats[idx]
         const pinBuilder = new Cesium.PinBuilder()
         const height = viewer.scene.sampleHeight(Cesium.Cartographic.fromDegrees(roof.center.longitude, roof.center.latitude))
-        const color = colors[idx % colors.length]
+        const color = roofColors[idx % roofColors.length]
         return <Entity key={i}
           name={`Roof segment ${i}`}
           position={Cesium.Cartesian3.fromDegrees(roof.center.longitude, roof.center.latitude, height)}
@@ -348,55 +267,65 @@ export default function App() {
       })
     : null
 
-  const mapDataLayerEntity = <Entity
-    name={inputLayerId}
-    description={ReactDOMServer.renderToStaticMarkup(
-      <table className="cesium-infoBox-defaultTable">
-        <tr>
-          <td>Latitude</td>
-          <td>{building?.center.latitude.toFixed(7)}</td>
-        </tr>
-        <tr>
-          <td>Longitude</td>
-          <td>{building?.center.longitude.toFixed(7)}</td>
-        </tr>
-        <tr>
-          <td>Imagery quality</td>
-          <td>{dataLayersResponse?.imageryQuality}</td>
-        </tr>
-        <tr>
-          <td>Imagery date</td>
-          <td>
-            {dataLayersResponse?.imageryDate.month}
-            /{dataLayersResponse?.imageryDate.day}
-            /{dataLayersResponse?.imageryDate.year}
-          </td>
-        </tr>
-        <tr>
-          <td>Imagery processed date</td>
-          <td>
-            {dataLayersResponse?.imageryProcessedDate.month}
-            /{dataLayersResponse?.imageryProcessedDate.day}
-            /{dataLayersResponse?.imageryProcessedDate.year}
-          </td>
-        </tr>
-      </table>
-    )}
-  >
-    <RectangleGraphics
-      coordinates={layer
-        ? Cesium.Rectangle.fromDegrees(
-          layer.west, layer.south,
-          layer.east, layer.north,
-        )
-        : undefined
-      }
-      material={new Cesium.ImageMaterialProperty({
-        image: getLayerImage[inputLayerId],
-        transparent: true,
-      })}
-    />
-  </Entity>
+  const layerImageIdx: Record<LayerId, number> = {
+    mask: 0,
+    dsm: 0,
+    rgb: 0,
+    annualFlux: 0,
+    monthlyFlux: inputMonth,
+    hourlyShade: inputHour,
+  }
+
+  const mapDataLayerEntity = dataLayer
+    ? <Entity
+      name={inputLayerId}
+      description={ReactDOMServer.renderToStaticMarkup(
+        <table className="cesium-infoBox-defaultTable">
+          <tr>
+            <td>Latitude</td>
+            <td>{buildingResponse?.center.latitude.toFixed(7)}</td>
+          </tr>
+          <tr>
+            <td>Longitude</td>
+            <td>{buildingResponse?.center.longitude.toFixed(7)}</td>
+          </tr>
+          <tr>
+            <td>Imagery quality</td>
+            <td>{dataLayersResponse?.imageryQuality}</td>
+          </tr>
+          <tr>
+            <td>Imagery date</td>
+            <td>
+              {dataLayersResponse?.imageryDate.month}
+              /{dataLayersResponse?.imageryDate.day}
+              /{dataLayersResponse?.imageryDate.year}
+            </td>
+          </tr>
+          <tr>
+            <td>Imagery processed date</td>
+            <td>
+              {dataLayersResponse?.imageryProcessedDate.month}
+              /{dataLayersResponse?.imageryProcessedDate.day}
+              /{dataLayersResponse?.imageryProcessedDate.year}
+            </td>
+          </tr>
+        </table>
+      )}
+    >
+      <RectangleGraphics
+        coordinates={Cesium.Rectangle.fromDegrees(
+          dataLayer.boundingBox.sw.longitude,
+          dataLayer.boundingBox.sw.latitude,
+          dataLayer.boundingBox.ne.longitude,
+          dataLayer.boundingBox.ne.latitude,
+        )}
+        material={new Cesium.ImageMaterialProperty({
+          image: dataLayer.images[layerImageIdx[dataLayer.id]],
+          transparent: true,
+        })}
+      />
+    </Entity>
+    : null
 
   function playAnimation(onTick: (seconds: number) => void) {
     const viewer = mapRef?.current?.cesiumElement!
@@ -416,12 +345,17 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (layer && inputLayerId == 'hourlyShade') {
-      setLayerImages(Array(24).fill(0).map((_, inputHour) =>
-        renderLayerImage(layer, inputMonth, inputDay, inputHour)
-      ))
+    if (inputLayerId && buildingResponse && dataLayersResponse) {
+      createDataLayer({
+        layerId: inputLayerId,
+        dataLayersResponse: dataLayersResponse,
+      }).then(layer => setDataLayer(layer))
+        .catch((error: any) => {
+          console.error(error)
+          setErrorLayer(error)
+        })
     }
-  }, [layer, inputMonth, inputDay])
+  }, [inputLayerId, dataLayersResponse, inputMask, inputMonth, inputDay])
 
   useEffect(() => {
     if (!inputAnimation) {
@@ -439,12 +373,12 @@ export default function App() {
     }
   }, [inputLayerId, inputAnimation])
 
-  const dataLayerChoice = building
+  const dataLayerChoice = buildingResponse
     ? <Paper elevation={2}>
       <Box p={2}>
         <DataLayerChoice
           layerId={inputLayerId}
-          layer={layer}
+          loading={!dataLayer}
           month={{ get: inputMonth, set: setInputMonth }}
           day={{ get: inputDay, set: setInputDay }}
           hour={{ get: inputHour, set: setInputHour }}
@@ -452,7 +386,6 @@ export default function App() {
           animation={{ get: inputAnimation, set: setInputAnimation }}
           onChange={inputLayerId => {
             setErrorLayer(null)
-            setLayer(null)
             const defaultSettings: Record<LayerId, () => void> = {
               mask: () => {
                 setInputAnimation(false)
@@ -483,7 +416,6 @@ export default function App() {
             }
             defaultSettings[inputLayerId]()
             setInputDataLayer(inputLayerId)
-            showDataLayer(building, inputLayerId)
           }}
           error={errorLayer}
         />
@@ -491,11 +423,11 @@ export default function App() {
     </Paper>
     : <Skeleton variant='rounded' height={120} />
 
-  const paletteLegend = inputLayerId != 'rgb' && layer
+  const paletteLegend = dataLayer && dataLayer.palette
     ? <Palette
-      colors={layerChoices[inputLayerId].palette}
-      min={layerChoices[inputLayerId].min(layer)}
-      max={layerChoices[inputLayerId].max(layer)}
+      colors={dataLayer.palette.colors}
+      min={dataLayer.palette.min}
+      max={dataLayer.palette.max}
     />
     : null
 
@@ -537,21 +469,21 @@ export default function App() {
     </Paper>
     : <Skeleton variant='rounded' height={160} />
 
-  const buildingInsightsSummary = building
+  const buildingInsightsSummary = buildingResponse
     ? <Paper elevation={2}>
       <Box p={2}>
         <Typography variant='subtitle1'>🏡 Building insights</Typography>
         <Show sortObjectKeys={false} data={{
-          'Carbon offset factor': `${building.solarPotential.carbonOffsetFactorKgPerMwh.toFixed(1)} Kg/MWh`,
-          'Maximum sunshine': `${building.solarPotential.maxSunshineHoursPerYear.toFixed(1)} hr/year`,
-          'Maximum panels': `${building.solarPotential.solarPanels.length} panels`,
-          'Imagery date': building.imageryDate,
+          'Carbon offset factor': `${buildingResponse.solarPotential.carbonOffsetFactorKgPerMwh?.toFixed(1)} Kg/MWh`,
+          'Maximum sunshine': `${buildingResponse.solarPotential.maxSunshineHoursPerYear?.toFixed(1)} hr/year`,
+          'Maximum panels': `${buildingResponse.solarPotential.solarPanels.length} panels`,
+          'Imagery date': buildingResponse.imageryDate,
         }} />
       </Box>
     </Paper>
     : <Skeleton variant='rounded' height={200} />
 
-  const solarConfigurationDetails = building && solarConfigs
+  const solarConfigurationDetails = buildingResponse && solarConfigs
     ? <>
       <Button
         onClick={() => setOpenMoreDetails(true)}
@@ -586,7 +518,7 @@ export default function App() {
                   </Stack>,
                 'Config ID': solarConfigIdx,
                 'Possible configs': solarConfigs.length,
-                'Solar panels used': `${solarConfigs[solarConfigIdx].panelsCount} out of ${building.solarPotential.solarPanels.length}`,
+                'Solar panels used': `${solarConfigs[solarConfigIdx].panelsCount} out of ${buildingResponse.solarPotential.solarPanels.length}`,
               }} />
             </Box>
           </Paper>
@@ -594,9 +526,9 @@ export default function App() {
             Building insights response
           </Typography>
           <SolarDetails
-            building={building}
+            building={buildingResponse}
             solarConfigIdx={solarConfigIdx}
-            colors={colors}
+            colors={roofColors}
           />
           {dataLayersResponse
             ? <>
