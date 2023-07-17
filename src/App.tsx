@@ -75,6 +75,7 @@ export default function App() {
   const [inputMonthlyKwh, setInputMonthlyKwh] = useState(0)
   const [inputShowPanelCounts, setInputShowPanelCounts] = useState(false)
   const [inputShowPanels, setInputShowPanels] = useState(true)
+  const [inputShowDataLayer, setInputShowDataLayer] = useState(true)
 
   // App state.
   const [openMoreDetails, setOpenMoreDetails] = useState(false)
@@ -125,11 +126,12 @@ export default function App() {
 
     // Fly to the location.
     const viewer = mapRef?.current?.cesiumElement!
+    const cameraDistance = boundingBoxSize(buildingResponse.boundingBox) * 2
     flyTo({
       viewer: viewer,
       point: buildingResponse.center,
       cameraAngle: Cesium.Math.toRadians(-25),
-      cameraDistance: boundingBoxSize(buildingResponse.boundingBox) * 2,
+      cameraDistance: Math.max(cameraDistance, 100),
       onStart: () => {
         // Unlock the camera.
         viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
@@ -184,7 +186,7 @@ export default function App() {
     setDataLayersResponse(dataLayersResponse)
   }
 
-  const mapRoofSegmentPins = inputShowPanelCounts && buildingResponse && solarConfigs
+  const mapRoofPins = inputShowPanelCounts && buildingResponse && solarConfigs
     ? createRoofPins({
       viewer: mapRef?.current?.cesiumElement!,
       solarConfig: solarConfigs[solarConfigIdx],
@@ -355,56 +357,64 @@ export default function App() {
     ? <Paper elevation={2}>
       <Box p={2}>
         <Typography variant='subtitle1'>🗺️ Data layer</Typography>
-        <Box pt={2} />
-        <DataLayerChoice
-          layerId={inputLayerId}
-          loading={!dataLayer}
-          month={{ get: inputMonth, set: setInputMonth }}
-          day={{ get: inputDay, set: setInputDay }}
-          hour={{ get: inputHour, set: setInputHour }}
-          mask={{ get: inputMask, set: setInputMask }}
-          animation={{ get: inputAnimation, set: setInputAnimation }}
-          onChange={inputLayerId => {
-            setErrorLayer(null)
-            setDataLayer(null)
-            const defaultSettings: Record<LayerId, () => void> = {
-              mask: () => {
-                setInputAnimation(false)
-                setInputMask(false)
-              },
-              dsm: () => {
-                setInputAnimation(false)
-                setInputMask(false)
-              },
-              rgb: () => {
-                setInputAnimation(false)
-                setInputMask(false)
-              },
-              annualFlux: () => {
-                setInputAnimation(false)
-                setInputMask(true)
-              },
-              monthlyFlux: () => {
-                setInputAnimation(true)
-                setInputMask(true)
-              },
-              hourlyShade: () => {
-                setInputAnimation(true)
-                setInputMask(true)
-                setInputMonth(3)
-                setInputDay(14)
-              },
-            }
-            defaultSettings[inputLayerId]()
-            setInputDataLayer(inputLayerId)
-          }}
-          error={errorLayer}
-        />
+        <Stack pt={2}>
+          <DataLayerChoice
+            layerId={inputLayerId}
+            loading={!dataLayer}
+            month={{ get: inputMonth, set: setInputMonth }}
+            day={{ get: inputDay, set: setInputDay }}
+            hour={{ get: inputHour, set: setInputHour }}
+            mask={{ get: inputMask, set: setInputMask }}
+            animation={{ get: inputAnimation, set: setInputAnimation }}
+            onChange={inputLayerId => {
+              setErrorLayer(null)
+              setDataLayer(null)
+              const defaultSettings: Record<LayerId, () => void> = {
+                mask: () => {
+                  setInputAnimation(false)
+                  setInputMask(false)
+                },
+                dsm: () => {
+                  setInputAnimation(false)
+                  setInputMask(false)
+                },
+                rgb: () => {
+                  setInputAnimation(false)
+                  setInputMask(false)
+                },
+                annualFlux: () => {
+                  setInputAnimation(false)
+                  setInputMask(true)
+                },
+                monthlyFlux: () => {
+                  setInputAnimation(true)
+                  setInputMask(true)
+                },
+                hourlyShade: () => {
+                  setInputAnimation(true)
+                  setInputMask(true)
+                  setInputMonth(3)
+                  setInputDay(14)
+                },
+              }
+              defaultSettings[inputLayerId]()
+              setInputDataLayer(inputLayerId)
+            }}
+            error={errorLayer}
+          />
+          <FormControlLabel
+            control={<Switch
+              checked={inputShowDataLayer}
+              onChange={(_, checked) => setInputShowDataLayer(checked)}
+            />}
+            label="Show data layer"
+          />
+        </Stack>
       </Box>
     </Paper>
     : <Skeleton variant='rounded' height={160} />
 
-  const paletteLegend = dataLayer && dataLayer.palette
+  const paletteLegend = inputShowDataLayer && dataLayer && dataLayer.palette
     ? <Palette
       colors={dataLayer.palette.colors}
       min={dataLayer.palette.min}
@@ -518,12 +528,12 @@ export default function App() {
           }
         }}
       >
-        {mapRoofSegmentPins}
+        {mapRoofPins}
         {inputShowPanels
           ? solarPanels.slice(0, solarConfigs?.at(solarConfigIdx)?.panelsCount ?? 0)
           : null
         }
-        {mapDataLayerEntity}
+        {inputShowDataLayer ? mapDataLayerEntity : null}
       </Map>
     </Box>
 
