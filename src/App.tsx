@@ -475,10 +475,15 @@ export default function App() {
           />
           {dataLayersResponse
             ? <>
-              <Typography pt={4} variant='subtitle2'>
-                Data layers response
-              </Typography>
-              <Show data={dataLayersResponse} />
+              <Box pt={4} />
+              <Paper elevation={2}>
+                <Box p={2}>
+                  <Typography variant='subtitle2'>
+                    Data layers response
+                  </Typography>
+                  <Show data={dataLayersResponse} />
+                </Box>
+              </Paper>
             </>
             : <Grid container justifyContent='center' pt={4}>
               <Typography variant='overline'>Data layers not available</Typography>
