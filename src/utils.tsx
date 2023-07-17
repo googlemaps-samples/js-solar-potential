@@ -2,7 +2,7 @@ import ReactDOMServer from 'react-dom/server'
 import * as Cesium from 'cesium';
 import { BoxGraphics, Entity } from 'resium';
 import { TypedArray } from 'geotiff';
-import { RoofSegmentSizeAndSunshineStats, SolarPanel } from './services/solar/buildingInsights';
+import { RoofSegmentSizeAndSunshineStats, SolarPanel, SolarPanelConfig } from './services/solar/buildingInsights';
 import { LatLng, LatLngBox } from './common';
 import { DataLayersResponse, GeoTiffData, LayerId, downloadGeoTIFF, getDataLayers } from './services/solar/dataLayers';
 
@@ -85,10 +85,12 @@ export async function createSolarPanels({
   colors: string[],
   info: (panel: SolarPanel, roof: RoofSegmentSizeAndSunshineStats, color: string) => Record<string, string | JSX.Element>,
 }): Promise<JSX.Element[]> {
+  const panelDepth = 0.5
   const coordinates = panels.map(panel => Cesium.Cartesian3.fromDegrees(panel.center.longitude, panel.center.latitude))
-  const positions = await viewer.scene.clampToHeightMostDetailed(coordinates, [], panelWidth)
+  const positions = await viewer.scene.clampToHeightMostDetailed(coordinates, [], 1)
   return panels.map((panel, i) => {
-    const position = positions[i]
+    const coords = Cesium.Cartographic.fromCartesian(positions[i])
+    const position = Cesium.Cartesian3.fromRadians(coords.longitude, coords.latitude, coords.height + panelDepth)
     const roofIdx = panel.segmentIndex ?? 0
     const [width, height] = panel.orientation == 'LANDSCAPE'
       ? [panelWidth, panelHeight]
@@ -114,14 +116,49 @@ export async function createSolarPanels({
       height={1}
     >
       <BoxGraphics
-        dimensions={new Cesium.Cartesian3(width, height, 1)}
-        material={Cesium.Color.fromCssColorString(color).withAlpha(0.8)}
+        dimensions={new Cesium.Cartesian3(width, height, panelDepth)}
+        material={Cesium.Color.fromCssColorString(color)}
         outline={true}
         outlineColor={Cesium.Color.BLACK}
       />
     </Entity >
   })
 }
+
+export function createRoofPins({
+  viewer,
+  solarConfig,
+  roofStats,
+  roofColors,
+}: {
+  viewer: Cesium.Viewer,
+  solarConfig: SolarPanelConfig,
+  roofStats: RoofSegmentSizeAndSunshineStats[],
+  roofColors: string[],
+}) {
+  const pinBuilder = new Cesium.PinBuilder()
+  return solarConfig.roofSegmentSummaries
+    .map((roof, i) => {
+      const idx = roof.segmentIndex ?? 0
+      const color = roofColors[idx % roofColors.length]
+      const center = roofStats[idx].center
+      const coordinates = Cesium.Cartesian3.fromDegrees(center.longitude, center.latitude)
+      const size = normalize(roof.panelsCount ?? 0, { xMin: 0, xMax: 200, yMin: 30, yMax: 80 })
+      return <Entity key={i}
+        name={`Roof segment ${i}`}
+        position={viewer.scene.clampToHeight(coordinates)}
+        billboard={{
+          image: pinBuilder.fromText(
+            roof.panelsCount.toString(),
+            Cesium.Color.fromCssColorString(color),
+            Math.round(size),
+          ).toDataURL(),
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        }}
+      />
+    })
+}
+
 
 export async function renderDataLayer({
   inputLayerId,
@@ -386,7 +423,7 @@ export function renderImagePalette({ data, mask, palette, index }: {
     }
   })
 
-  const indices = normalize(data.rasters[index ?? 0], {
+  const indices = normalizeArray(data.rasters[index ?? 0], {
     xMin: palette.min,
     xMax: palette.max,
     yMin: 0,
@@ -405,14 +442,18 @@ export function renderImagePalette({ data, mask, palette, index }: {
     mask: mask,
   })
 }
-export function normalize(array: TypedArray, args: { xMin?: number, xMax?: number, yMin?: number, yMax?: number }) {
+
+export function normalizeArray(array: TypedArray, args: { xMin?: number, xMax?: number, yMin?: number, yMax?: number }) {
+  return array.map(x => normalize(x, args))
+}
+
+export function normalize(x: number, args: { xMin?: number, xMax?: number, yMin?: number, yMax?: number }) {
   const xMin = args.xMin ?? 0
   const xMax = args.xMax ?? 1
   const yMin = args.yMin ?? 0
   const yMax = args.yMax ?? 1
-  return array
-    .map(x => (x - xMin) / (xMax - xMin) * (yMax - yMin) + yMin)
-    .map(y => clamp(y, yMin, yMax))
+  const y = (x - xMin) / (xMax - xMin) * (yMax - yMin) + yMin
+  return clamp(y, yMin, yMax)
 }
 
 export function lerp(x: number, y: number, t: number) {

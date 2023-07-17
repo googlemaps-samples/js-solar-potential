@@ -12,12 +12,12 @@ import { Place } from "../common";
 interface Props {
   googleMapsApiKey: string
   initialAddress?: string
-  onPlaceChanged?: (place: Place) => void
+  onPlaceChanged: (place: Place) => void
 }
 
 // https://mui.com/material-ui/react-autocomplete/#google-maps-place
 export default function SearchBar(props: PropsWithChildren<Props>) {
-  const onPlaceChanged = props.onPlaceChanged ?? (_ => { })
+  const [inputValue, setInputValue] = useState(props.initialAddress)
   const [options, setOptions] = useState<readonly google.maps.places.AutocompletePrediction[]>([])
 
   let googleMapsLoader = new Loader({ apiKey: props.googleMapsApiKey })
@@ -38,7 +38,7 @@ export default function SearchBar(props: PropsWithChildren<Props>) {
     })
     const result = response.results[0]
     if (result && result.geometry) {
-      onPlaceChanged({
+      props.onPlaceChanged({
         address: result.formatted_address,
         center: {
           latitude: result.geometry.location.lat(),
@@ -55,6 +55,20 @@ export default function SearchBar(props: PropsWithChildren<Props>) {
   }, [])
 
   return <Autocomplete
+    autoComplete
+    onChange={async (_, place) => {
+      if (place) {
+        setAddress(place.description)
+      }
+    }}
+    options={options}
+    getOptionLabel={option => option.description}
+    inputValue={inputValue}
+    onInputChange={(event, value) => {
+      if (event) {
+        setInputValue(value)
+      }
+    }}
     renderInput={params =>
       <TextField
         {...params}
@@ -74,14 +88,6 @@ export default function SearchBar(props: PropsWithChildren<Props>) {
         }}
       />
     }
-    options={options}
-    getOptionLabel={option => option.description}
-    autoComplete
-    onChange={async (_, place) => {
-      if (place) {
-        setAddress(place.description)
-      }
-    }}
     renderOption={(props, option) => {
       const matches =
         option.structured_formatting.main_text_matched_substrings || [];

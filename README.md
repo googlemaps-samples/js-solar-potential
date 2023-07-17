@@ -1,10 +1,22 @@
 # ☀️ Solar potential demo
 
 ## Before you begin
+
 [Set up Maps API](https://console.cloud.google.com/google/maps-apis/start)
+
+Enable the APIs:
+- Map tiles: `tile.googleapis.com`
 
 ```sh
 npm install
+```
+
+Create a `.env` file with the environment variables.
+
+```sh
+# .env
+VITE_GOOGLE_MAPS_API_KEY="Your Google Maps API key"
+VITE_CESIUM_API_KEY="Your Cesium ION key"
 ```
 
 ## Run locally
@@ -28,6 +40,5 @@ export LOCATION="us-central1"
 gcloud run deploy "solar-potential" \
   --source="." \
   --region="$LOCATION" \
-  --set-env-vars="VITE_GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY,VITE_CESIUM_API_KEY=$CESIUM_API_KEY" \
   --allow-unauthenticated
 ```

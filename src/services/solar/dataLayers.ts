@@ -3,7 +3,7 @@ import * as geokeysToProj4 from 'geotiff-geokeys-to-proj4';
 import proj4 from 'proj4';
 import { Date, LatLngBox } from '../../common';
 import { LatLng } from '../../common';
-import { lerp, normalize } from '../../utils';
+import { lerp, normalizeArray } from '../../utils';
 
 export type LayerId
   = 'mask'

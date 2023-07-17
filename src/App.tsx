@@ -20,7 +20,7 @@ import {
   Switch,
 } from '@mui/material'
 
-import { DataLayer, boundingBoxSize, createSolarPanels, flyTo, renderDataLayer } from './utils'
+import { DataLayer, boundingBoxSize, createRoofPins, createSolarPanels, flyTo, normalize, normalizeArray, renderDataLayer } from './utils'
 
 import Map from './components/Map'
 import SearchBar from './components/SearchBar'
@@ -127,7 +127,7 @@ export default function App() {
     flyTo({
       viewer: viewer,
       point: buildingResponse.center,
-      cameraAngle: Cesium.Math.toRadians(-30),
+      cameraAngle: Cesium.Math.toRadians(-25),
       cameraDistance: boundingBoxSize(buildingResponse.boundingBox) * 2,
       onStart: () => {
         // Unlock the camera.
@@ -184,23 +184,12 @@ export default function App() {
   }
 
   const mapRoofSegmentPins = inputShowPanelCounts && buildingResponse && solarConfigs
-    ? solarConfigs[solarConfigIdx].roofSegmentSummaries
-      .map((segment, i) => {
-        const idx = segment.segmentIndex ?? 0
-        const viewer = mapRef?.current?.cesiumElement!
-        const roof = buildingResponse.solarPotential.roofSegmentStats[idx]
-        const pinBuilder = new Cesium.PinBuilder()
-        const height = viewer.scene.sampleHeight(Cesium.Cartographic.fromDegrees(roof.center.longitude, roof.center.latitude))
-        const color = roofColors[idx % roofColors.length]
-        return <Entity key={i}
-          name={`Roof segment ${i}`}
-          position={Cesium.Cartesian3.fromDegrees(roof.center.longitude, roof.center.latitude, height)}
-          billboard={{
-            image: pinBuilder.fromText(segment.panelsCount.toString(), Cesium.Color.fromCssColorString(color), 50).toDataURL(),
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          }}
-        />
-      })
+    ? createRoofPins({
+      viewer: mapRef?.current?.cesiumElement!,
+      solarConfig: solarConfigs[solarConfigIdx],
+      roofStats: buildingResponse.solarPotential.roofSegmentStats,
+      roofColors: roofColors,
+    })
     : null
 
   const layerImageIdx: Record<LayerId, number> = {
