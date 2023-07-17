@@ -21,7 +21,7 @@ import {
   Switch,
 } from '@mui/material'
 
-import { DataLayer, boundingBoxSize, createRoofPins, createSolarPanels, flyTo, normalize, normalizeArray, renderDataLayer } from './utils'
+import { DataLayer, boundingBoxSize, clamp, createRoofPins, createSolarPanels, flyTo, normalize, normalizeArray, renderDataLayer } from './utils'
 
 import Map from './components/Map'
 import SearchBar from './components/SearchBar'
@@ -37,6 +37,9 @@ import Palette from './components/Palette'
 
 const cesiumApiKey = import.meta.env.VITE_CESIUM_API_KEY
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+
+// const initialAddress = 'Google MP2, Borregas Avenue, Sunnyvale, CA'
+const initialAddress = '1600 Amphitheatre Pkwy, Mountain View, CA 94043'
 
 const sidebarWidth = 400
 
@@ -126,12 +129,11 @@ export default function App() {
 
     // Fly to the location.
     const viewer = mapRef?.current?.cesiumElement!
-    const cameraDistance = boundingBoxSize(buildingResponse.boundingBox) * 2
     flyTo({
       viewer: viewer,
       point: buildingResponse.center,
-      cameraAngle: Cesium.Math.toRadians(-25),
-      cameraDistance: Math.max(cameraDistance, 100),
+      cameraAngle: Cesium.Math.toRadians(-23),
+      cameraDistance: 150,
       onStart: () => {
         // Unlock the camera.
         viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)
@@ -402,13 +404,16 @@ export default function App() {
             }}
             error={errorLayer}
           />
-          <FormControlLabel
-            control={<Switch
-              checked={inputShowDataLayer}
-              onChange={(_, checked) => setInputShowDataLayer(checked)}
-            />}
-            label="Show data layer"
-          />
+          {dataLayer
+            ? <FormControlLabel
+              control={<Switch
+                checked={inputShowDataLayer}
+                onChange={(_, checked) => setInputShowDataLayer(checked)}
+              />}
+              label="Show data layer"
+            />
+            : null
+          }
         </Stack>
       </Box>
     </Paper>
@@ -556,7 +561,7 @@ export default function App() {
       <Box p={1} pt={2} sx={{ overflow: 'auto' }}>
         <SearchBar
           googleMapsApiKey={googleMapsApiKey}
-          initialAddress='Google MP2, Borregas Avenue, Sunnyvale, CA'
+          initialAddress={initialAddress}
           onPlaceChanged={async place => showSolarPotential(place.center)}
         />
 
@@ -571,7 +576,7 @@ export default function App() {
             </Grid>
           </>
           : <Grid container justifyContent='center' pt={10}>
-            <Typography variant='overline'>No information to display</Typography>
+            <Typography variant='overline'>{errorBuilding.message}</Typography>
           </Grid>
         }
       </Box>
