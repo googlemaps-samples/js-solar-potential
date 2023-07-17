@@ -145,7 +145,7 @@ export default function DataLayerChoice(props: Props) {
       blurOnSelect
       size="small"
       renderInput={params =>
-        <TextField {...params} variant="standard" label="Data layer" />
+        <TextField {...params} variant="outlined" />
       }
       value={props.layerId}
       options={Object.keys(choices) as LayerId[]}

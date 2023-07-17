@@ -308,9 +308,54 @@ export default function App() {
     }
   }, [inputLayerId, inputAnimation])
 
+  const solarConfigurationSummary = solarConfigs
+    ? <Paper>
+      <Box p={2}>
+        <Typography variant='subtitle1'>☀️ Solar configuration</Typography>
+        <Show sortObjectKeys={false} data={{
+          'Monthly energy':
+            <Stack direction='row' pt={3} spacing={1}>
+              <Slider
+                value={Math.ceil(inputMonthlyKwh)}
+                min={Math.floor(solarConfigs[0].yearlyEnergyDcKwh / 12)}
+                max={Math.floor(solarConfigs.slice(-1)[0].yearlyEnergyDcKwh / 12)}
+                valueLabelDisplay="on"
+                onChange={(_, monthlyKwh) => setInputMonthlyKwh(monthlyKwh as number)}
+                sx={{ width: 140 }}
+              />
+              <Typography>KWh</Typography>
+            </Stack>,
+          'Config ID': solarConfigIdx,
+          'Total panels': `${solarConfigs[solarConfigIdx].panelsCount} panels`,
+        }} />
+        {solarPanels.length > 0
+          ? <>
+            <FormControlLabel
+              control={<Switch
+                checked={inputShowPanels}
+                onChange={(_, checked) => setInputShowPanels(checked)}
+              />}
+              label="Show panels"
+            />
+            <FormControlLabel
+              control={<Switch
+                checked={inputShowPanelCounts}
+                onChange={(_, checked) => setInputShowPanelCounts(checked)}
+              />}
+              label="Display number of panels"
+            />
+          </>
+          : <LinearProgress />
+        }
+      </Box >
+    </Paper>
+    : <Skeleton variant='rounded' height={160} />
+
   const dataLayerChoice = buildingResponse
     ? <Paper elevation={2}>
       <Box p={2}>
+        <Typography variant='subtitle1'>🗺️ Data layer</Typography>
+        <Box pt={2} />
         <DataLayerChoice
           layerId={inputLayerId}
           loading={!dataLayer}
@@ -357,7 +402,7 @@ export default function App() {
         />
       </Box>
     </Paper>
-    : <Skeleton variant='rounded' height={120} />
+    : <Skeleton variant='rounded' height={160} />
 
   const paletteLegend = dataLayer && dataLayer.palette
     ? <Palette
@@ -366,49 +411,6 @@ export default function App() {
       max={dataLayer.palette.max}
     />
     : null
-
-  const solarConfigurationSummary = solarConfigs
-    ? <Paper>
-      <Box p={2}>
-        <Typography variant='subtitle1'>☀️ Solar configuration</Typography>
-        <Show sortObjectKeys={false} data={{
-          'Monthly energy':
-            <Stack direction='row' pt={3} spacing={1}>
-              <Slider
-                value={Math.ceil(inputMonthlyKwh)}
-                min={Math.floor(solarConfigs[0].yearlyEnergyDcKwh / 12)}
-                max={Math.floor(solarConfigs.slice(-1)[0].yearlyEnergyDcKwh / 12)}
-                valueLabelDisplay="on"
-                onChange={(_, monthlyKwh) => setInputMonthlyKwh(monthlyKwh as number)}
-                sx={{ width: 140 }}
-              />
-              <Typography>KWh</Typography>
-            </Stack>,
-          'Config ID': solarConfigIdx,
-          'Total panels': `${solarConfigs[solarConfigIdx].panelsCount} panels`,
-        }} />
-        {solarPanels.length > 0
-          ? <>
-            <FormControlLabel
-              control={<Switch
-                checked={inputShowPanels}
-                onChange={(_, checked) => setInputShowPanels(checked)}
-              />}
-              label="Show panels"
-            />
-            <FormControlLabel
-              control={<Switch
-                checked={inputShowPanelCounts}
-                onChange={(_, checked) => setInputShowPanelCounts(checked)}
-              />}
-              label="Display number of panels"
-            />
-          </>
-          : <LinearProgress />
-        }
-      </Box >
-    </Paper>
-    : <Skeleton variant='rounded' height={160} />
 
   const buildingInsightsSummary = buildingResponse
     ? <Paper elevation={2}>
@@ -536,7 +538,7 @@ export default function App() {
         },
       }}
     >
-      <Box p={1} sx={{ overflow: 'auto' }}>
+      <Box p={1} pt={2} sx={{ overflow: 'auto' }}>
         <SearchBar
           googleMapsApiKey={googleMapsApiKey}
           initialAddress='Google MP2, Borregas Avenue, Sunnyvale, CA'
@@ -545,8 +547,8 @@ export default function App() {
 
         {!errorBuilding
           ? <>
-            <Box pt={2}>{dataLayerChoice}</Box>
             <Box pt={2}>{solarConfigurationSummary}</Box>
+            <Box pt={2}>{dataLayerChoice}</Box>
             <Box pt={2}>{buildingInsightsSummary}</Box>
 
             <Grid p={3} container justifyContent="flex-end">
