@@ -387,7 +387,7 @@ export default function App() {
           'Config ID': solarConfigIdx,
           'Total panels': `${solarConfigs[solarConfigIdx].panelsCount} panels`,
         }} />
-        {solarPanels
+        {solarPanels.length > 0
           ? <>
             <FormControlLabel
               control={<Switch
