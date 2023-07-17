@@ -32,9 +32,6 @@ npm run dev
 [Deploy from source code](https://cloud.google.com/run/docs/quickstarts/build-and-deploy/deploy-nodejs-service)
 
 ```sh
-export GOOGLE_MAPS_API_KEY="Your Google Maps API key"
-export CESIUM_API_KEY="Your Cesium ion API key"
-
 export LOCATION="us-central1"
 
 gcloud run deploy "solar-potential" \

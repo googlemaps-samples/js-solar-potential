@@ -320,6 +320,7 @@ export default function App() {
           animation={{ get: inputAnimation, set: setInputAnimation }}
           onChange={inputLayerId => {
             setErrorLayer(null)
+            setDataLayer(null)
             const defaultSettings: Record<LayerId, () => void> = {
               mask: () => {
                 setInputAnimation(false)
@@ -505,7 +506,10 @@ export default function App() {
         }}
       >
         {mapRoofSegmentPins}
-        {solarPanels.slice(0, solarConfigs?.at(solarConfigIdx)?.panelsCount ?? 0)}
+        {inputShowPanels
+          ? solarPanels.slice(0, solarConfigs?.at(solarConfigIdx)?.panelsCount ?? 0)
+          : null
+        }
         {mapDataLayerEntity}
       </Map>
     </Box>
