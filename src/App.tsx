@@ -13,6 +13,7 @@ import {
   Drawer,
   FormControlLabel,
   Grid,
+  LinearProgress,
   Paper,
   Skeleton,
   Slider,
@@ -386,20 +387,25 @@ export default function App() {
           'Config ID': solarConfigIdx,
           'Total panels': `${solarConfigs[solarConfigIdx].panelsCount} panels`,
         }} />
-        <FormControlLabel
-          control={<Switch
-            checked={inputShowPanels}
-            onChange={(_, checked) => setInputShowPanels(checked)}
-          />}
-          label="Show panels"
-        />
-        <FormControlLabel
-          control={<Switch
-            checked={inputShowPanelCounts}
-            onChange={(_, checked) => setInputShowPanelCounts(checked)}
-          />}
-          label="Display number of panels"
-        />
+        {solarPanels
+          ? <>
+            <FormControlLabel
+              control={<Switch
+                checked={inputShowPanels}
+                onChange={(_, checked) => setInputShowPanels(checked)}
+              />}
+              label="Show panels"
+            />
+            <FormControlLabel
+              control={<Switch
+                checked={inputShowPanelCounts}
+                onChange={(_, checked) => setInputShowPanelCounts(checked)}
+              />}
+              label="Display number of panels"
+            />
+          </>
+          : <LinearProgress />
+        }
       </Box >
     </Paper>
     : <Skeleton variant='rounded' height={160} />
