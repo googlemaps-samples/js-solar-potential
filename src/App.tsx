@@ -16,6 +16,7 @@ import {
   Grid,
   IconButton,
   LinearProgress,
+  Link,
   Paper,
   Skeleton,
   Slider,
@@ -667,10 +668,10 @@ export default function App() {
           </Typography>
           <Typography variant='body2' fontSize='small' fontStyle={{ color: '#616161' }}>
             Rendered with &nbsp;
-            <a href="https://cesium.com">
+            <Link href="https://cesium.com">
               Cesium
               <LaunchIcon fontSize='small' />
-            </a>
+            </Link>
           </Typography>
         </Grid>
       </Box>
