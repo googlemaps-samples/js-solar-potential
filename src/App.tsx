@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import ReactDOMServer from 'react-dom/server'
 import * as Cesium from 'cesium'
-import { Entity, RectangleGraphics } from 'resium'
+import { Entity, BoxGraphics, RectangleGraphics } from 'resium'
 
 import CssBaseline from '@mui/material/CssBaseline'
 import {
+  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -19,9 +20,10 @@ import {
   Slider,
   Stack,
   Switch,
+  TextField,
 } from '@mui/material'
 
-import { DataLayer, boundingBoxSize, clamp, createRoofPins, createSolarPanels, flyTo, normalize, normalizeArray, renderDataLayer } from './utils'
+import { DataLayer, SolarPanelEntity, boundingBoxSize, createRoofPins, createSolarPanels, flyTo, normalize, normalizeArray, renderDataLayer } from './utils'
 
 import Map from './components/Map'
 import SearchBar from './components/SearchBar'
@@ -38,32 +40,39 @@ import Palette from './components/Palette'
 const cesiumApiKey = import.meta.env.VITE_CESIUM_API_KEY
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
-// const initialAddress = 'Google MP2, Borregas Avenue, Sunnyvale, CA'
-const initialAddress = '1600 Amphitheatre Pkwy, Mountain View, CA 94043'
+const googleOffices = {
+  'Googleplex': 'Googleplex, Amphitheatre Parkway, Mountain View, California',
+  'Moffet Place': 'Google MP2, Borregas Avenue, Sunnyvale, CA',
+  'Seattle': 'Google Seattle Lakeside, North 34th Street, Seattle, WA',
+  'Boulder': 'Google Boulder, Pearl Street, Suite 110, Boulder, CO',
+  'Chicago': 'Google Chicago Fulton Market, North Morgan Street, Chicago, IL',
+  'Kirkland': 'Google Kirkland Urban Central, Urban Plaza, Kirkland, WA',
+  'New York City': 'Google NYC: 8510 Building, 10th Avenue, New York, NY',
+  'San Francisco': 'Google San Francisco, Spear Street, San Francisco, CA',
+}
 
 const sidebarWidth = 400
 
 // https://materialui.co/colors
 const roofColors = [
-  '#E53935',  // 600 Red
-  '#1E88E5',  // 600 Blue
-  '#43A047',  // 600 Green
-  '#FB8C00',  // 600 Orange
-  '#8E24AA',  // 600 Purple
-  '#3949AB',  // 600 Indigo
-  '#B71C1C',  // 900 Red
-  '#0D47A1',  // 900 Blue
-  '#1B5E20',  // 900 Green
-  '#E65100',  // 900 Orange
-  '#4A148C',  // 900 Purple
-  '#1A237E',  // 900 Indigo
-  '#E57373',  // 300 Red
-  '#7986CB',  // 300 Indigo
-  '#81C784',  // 300 Green
-  '#FFB74D',  // 300 Orange
-  '#BA68C8',  // 300 Purple
+  '#E57373',  // Red
+  '#7986CB',  // Indigo
+  '#A3E1CB',  // Cyan / light blue
+  '#FDA679',  // Orange
+  '#96C9EB',  // Blue
+  '#FECBC8',  // Pale pink
+  '#C0C3F9',  // Lavender
+  '#0D979C',  // Teal
+  '#56ada0',  // Light teal
+  '#0676A8',  // Teal / blue
+  '#3F63CE',  // Dark blue
+  '#FF772B',  // Orange
+  '#699914',  // Green
 ]
 
+// TODO: 
+// - Add button "View on GitHub"
+// - Refactor Maps APIs into services
 
 export default function App() {
   const mapRef = useRef<{ cesiumElement: Cesium.Viewer }>(null)
@@ -79,6 +88,7 @@ export default function App() {
   const [inputShowPanelCounts, setInputShowPanelCounts] = useState(false)
   const [inputShowPanels, setInputShowPanels] = useState(true)
   const [inputShowDataLayer, setInputShowDataLayer] = useState(true)
+  const [inputAddress, setInputAddress] = useState('')
 
   // App state.
   const [openMoreDetails, setOpenMoreDetails] = useState(false)
@@ -88,7 +98,7 @@ export default function App() {
   const [errorLayer, setErrorLayer] = useState<any>()
 
   // Map entities cache since they're expensive to create.
-  const [solarPanels, setSolarPanels] = useState<JSX.Element[]>([])
+  const [solarPanels, setSolarPanels] = useState<SolarPanelEntity[]>([])
   const [dataLayer, setDataLayer] = useState<DataLayer | null>(null)
   const [loadingLayer, setLoadingLayer] = useState(false)
 
@@ -163,20 +173,21 @@ export default function App() {
       panels: buildingResponse.solarPotential.solarPanels,
       panelWidth: buildingResponse.solarPotential.panelWidthMeters ?? 0,
       panelHeight: buildingResponse.solarPotential.panelHeightMeters ?? 0,
-      colors: roofColors,
-      info: (panel, roof, color) => ({
+      panelDepth: 0.5,
+      info: (panel, roof, roofIdx) => ({
         'Latitude': panel.center.latitude.toFixed(7),
         'Longitude': panel.center.latitude.toFixed(7),
         'Orientation': panel.orientation,
         'Yearly energy': `${panel.yearlyEnergyDcKwh} DC KWh`,
         'Roof segment': <>
-          <span style={{ color: color }}>█ &nbsp;</span>
+          <span style={{ color: roofColors[roofIdx % roofColors.length] }}>█ &nbsp;</span>
           <span>{panel.segmentIndex ?? 0}</span>
         </>,
         'Pitch': `${roof.pitchDegrees}°`,
         'Azimuth': `${roof.azimuthDegrees}°`,
       }),
     }).then(panels => setSolarPanels(panels))
+
 
     // Get the data layer URLs from the Solar API.
     const radius = boundingBoxSize(buildingResponse.boundingBox) / 2
@@ -316,6 +327,12 @@ export default function App() {
     ? <Paper>
       <Box p={2}>
         <Typography variant='subtitle1'>☀️ Solar configuration</Typography>
+        <Box pt={1} />
+        <Typography variant='body2' fontSize='small' fontStyle={{ color: '#616161' }}>
+          The Solar API gives us an array of many possible combinations of solar panel configurations.
+          Based on your yearly energy requirements, you can choose your desired configuration.
+          The roof is broken into segments, and each has a different color.
+        </Typography>
         <Show sortObjectKeys={false} data={{
           'Monthly energy':
             <Stack direction='row' pt={3} spacing={1}>
@@ -329,6 +346,7 @@ export default function App() {
               />
               <Typography>KWh</Typography>
             </Stack>,
+          'Possible configs': solarConfigs.length,
           'Config ID': solarConfigIdx,
           'Total panels': `${solarConfigs[solarConfigIdx].panelsCount} panels`,
         }} />
@@ -353,7 +371,7 @@ export default function App() {
         }
       </Box >
     </Paper>
-    : <Skeleton variant='rounded' height={160} />
+    : <Skeleton variant='rounded' height={300} />
 
   const dataLayerChoice = buildingResponse
     ? <Paper elevation={2}>
@@ -512,6 +530,11 @@ export default function App() {
     </>
     : <Skeleton variant='rounded' width={130} height={35} />
 
+  const initialAddress = Object.keys(googleOffices)[0]
+  useEffect(() => {
+    setInputAddress(googleOffices[initialAddress])
+  }, [])
+
   return <Box sx={{ display: 'flex' }}>
     <CssBaseline />
 
@@ -536,15 +559,59 @@ export default function App() {
         {mapRoofPins}
         {inputShowPanels
           ? solarPanels.slice(0, solarConfigs?.at(solarConfigIdx)?.panelsCount ?? 0)
+            .map((panel, i) =>
+              <Entity key={i}
+                name={panel.name}
+                position={panel.position}
+                orientation={panel.orientation}
+                description={panel.description}
+              >
+                <BoxGraphics
+                  dimensions={panel.dimensions}
+                  material={Cesium.Color.fromCssColorString(roofColors[panel.roofIdx % roofColors.length])}
+                  outline={true}
+                  outlineColor={Cesium.Color.fromCssColorString('#424242')}
+                />
+              </Entity>
+            )
           : null
         }
         {inputShowDataLayer ? mapDataLayerEntity : null}
       </Map>
     </Box>
 
-    <Box pl={2} pt={4} pb={20} sx={{ position: 'absolute', height: '100%' }}>
-      {paletteLegend}
+    <Box p={1} pb={20} sx={{ position: 'absolute' }}>
+      <Grid container direction='column' spacing={1}>
+        <Grid item>
+          <Paper>
+            <Box px={2} pb={1}>
+              <Autocomplete
+                disablePortal
+                size='small'
+                defaultValue={initialAddress}
+                options={Object.keys(googleOffices)}
+                sx={{ width: 200 }}
+                renderInput={(params) => <TextField {...params} label="Visit a Google office" variant='standard' />}
+                onChange={(_, officeName) => {
+                  if (officeName) {
+                    setInputAddress(googleOffices[officeName])
+                  }
+                }}
+              />
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item>
+          <Stack direction='row' sx={{ height: '200px' }}>
+            <Box sx={{ height: '100%' }}>
+              {paletteLegend}
+            </Box>
+            <Box />
+          </Stack>
+        </Grid>
+      </Grid>
     </Box>
+
 
     <Drawer
       variant="permanent"
@@ -561,7 +628,8 @@ export default function App() {
       <Box p={1} pt={2} sx={{ overflow: 'auto' }}>
         <SearchBar
           googleMapsApiKey={googleMapsApiKey}
-          initialAddress={initialAddress}
+          inputValue={inputAddress}
+          setInputValue={setInputAddress}
           onPlaceChanged={async place => showSolarPotential(place.center)}
         />
 
@@ -579,6 +647,14 @@ export default function App() {
             <Typography variant='overline'>{errorBuilding.message}</Typography>
           </Grid>
         }
+        <Grid container pb={2} justifyContent='center'>
+          <Typography variant='body2' fontSize='small' fontStyle={{ color: '#616161' }}>
+            This is not an officially supported Google product.
+          </Typography>
+          <Typography variant='body2' fontSize='small' fontStyle={{ color: '#616161' }}>
+            Rendered with <a href="https://cesium.com">Cesium</a>
+          </Typography>
+        </Grid>
       </Box>
     </Drawer >
   </Box >

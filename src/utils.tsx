@@ -1,6 +1,6 @@
 import ReactDOMServer from 'react-dom/server'
 import * as Cesium from 'cesium';
-import { BoxGraphics, Entity } from 'resium';
+import { Entity } from 'resium';
 import { TypedArray } from 'geotiff';
 import { RoofSegmentSizeAndSunshineStats, SolarPanel, SolarPanelConfig } from './services/solar/buildingInsights';
 import { LatLng, LatLngBox } from './common';
@@ -18,6 +18,15 @@ export interface DataLayer {
   }
   palette?: { colors: string[], min: number, max: number }
   day?: number
+}
+
+export interface SolarPanelEntity {
+  name: string
+  position: Cesium.Cartesian3
+  orientation: Cesium.Quaternion
+  dimensions: Cesium.Cartesian3
+  roofIdx: number
+  description: string
 }
 
 const palettes = {
@@ -74,7 +83,7 @@ export async function createSolarPanels({
   panels,
   panelWidth,
   panelHeight,
-  colors,
+  panelDepth,
   info,
 }: {
   viewer: Cesium.Viewer,
@@ -82,10 +91,9 @@ export async function createSolarPanels({
   panels: SolarPanel[],
   panelWidth: number,
   panelHeight: number,
-  colors: string[],
-  info: (panel: SolarPanel, roof: RoofSegmentSizeAndSunshineStats, color: string) => Record<string, string | JSX.Element>,
-}): Promise<JSX.Element[]> {
-  const panelDepth = 0.5
+  panelDepth: number,
+  info: (panel: SolarPanel, roof: RoofSegmentSizeAndSunshineStats, roofIdx: number) => Record<string, string | JSX.Element>,
+}): Promise<SolarPanelEntity[]> {
   const coordinates = panels.map(panel => Cesium.Cartesian3.fromDegrees(panel.center.longitude, panel.center.latitude))
   const positions = await viewer.scene.clampToHeightMostDetailed(coordinates, [], 1)
   return panels.map((panel, i) => {
@@ -97,31 +105,19 @@ export async function createSolarPanels({
       : [panelHeight, panelWidth]
     const azimuth = roofSegments[roofIdx].azimuthDegrees ?? 0
     const pitch = roofSegments[roofIdx].pitchDegrees ?? 0
-    const color = colors[roofIdx % colors.length]
-    return <Entity key={i}
-      name={`Solar panel ${i}`}
-      description={info
-        ? ReactDOMServer.renderToStaticMarkup(infoTable(
-          info(panel, roofSegments[roofIdx], color)
-        ))
-        : undefined
-      }
-      position={position}
-      orientation={
-        Cesium.Transforms.headingPitchRollQuaternion(
-          position,
-          Cesium.HeadingPitchRoll.fromDegrees(azimuth + 90, pitch, 0)
-        )
-      }
-      height={1}
-    >
-      <BoxGraphics
-        dimensions={new Cesium.Cartesian3(width, height, panelDepth)}
-        material={Cesium.Color.fromCssColorString(color)}
-        outline={true}
-        outlineColor={Cesium.Color.BLACK}
-      />
-    </Entity >
+    return {
+      name: `Solar panel ${i}`,
+      position: position,
+      orientation: Cesium.Transforms.headingPitchRollQuaternion(
+        position,
+        Cesium.HeadingPitchRoll.fromDegrees(azimuth + 90, pitch, 0)
+      ),
+      dimensions: new Cesium.Cartesian3(width, height, panelDepth),
+      roofIdx: roofIdx,
+      description: ReactDOMServer.renderToStaticMarkup(infoTable(
+        info(panel, roofSegments[roofIdx], roofIdx)
+      )),
+    }
   })
 }
 

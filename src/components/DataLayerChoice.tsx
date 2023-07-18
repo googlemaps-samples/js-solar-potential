@@ -20,11 +20,11 @@ const choices: Record<LayerId, { label: string, description: string }> = {
   },
   monthlyFlux: {
     label: "Monthly sunshine (flux)",
-    description: "The monthly flux map (sunlight on roofs, broken down by month) of the region. Values are kWh/kW/year. The GeoTIFF pointed to by this URL will contain twelve bands, corresponding to January...December, in order.",
+    description: "The monthly flux map (sunlight on roofs, broken down by month) of the region. Values are kWh/kW/year. The GeoTIFF imagery file pointed to by this URL will contain twelve bands, corresponding to January...December, in order.",
   },
   hourlyShade: {
     label: "Hourly shade",
-    description: "Twelve URLs for hourly shade, corresponding to January...December, in order. Each GeoTIFF will contain 24 bands, corresponding to the 24 hours of the day. Each pixel is a 32 bit integer, corresponding to the (up to) 31 days of that month; a 1 bit means that the corresponding location is able to see the sun at that day, of that hour, of that month. Invalid locations are stored as -9999 (since this is negative, it has bit 31 set, and no valid value could have bit 31 set as that would correspond to the 32nd day of the month).",
+    description: "Twelve URLs for hourly shade, corresponding to January...December, in order. Each GeoTIFF imagery file will contain 24 bands, corresponding to the 24 hours of the day. Each pixel is a 32 bit integer, corresponding to the (up to) 31 days of that month; a 1 bit means that the corresponding location is able to see the sun at that day, of that hour, of that month. Invalid locations are stored as -9999 (since this is negative, it has bit 31 set, and no valid value could have bit 31 set as that would correspond to the 32nd day of the month).",
   },
 }
 

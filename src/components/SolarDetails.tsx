@@ -11,9 +11,8 @@ interface Props {
   colors: string[]
 }
 
-export default function SolarDetails({ building, solarConfigIdx, colors }: Props) {
-  const [expanded, setExpanded] = useState<string>('insights')
 
+export default function SolarDetails({ building, solarConfigIdx, colors }: Props) {
   const { solarPotential, ...buildingData } = building
   const {
     buildingStats,
@@ -24,20 +23,19 @@ export default function SolarDetails({ building, solarConfigIdx, colors }: Props
     wholeRoofStats,
     ...solarPotentialData
   } = solarPotential
-
   const solarConfig = building.solarPotential.solarPanelConfigs[solarConfigIdx]
   const { roofSegmentSummaries, ...solarConfigData } = solarConfig
 
   const sections: Record<string, { url: string, data: any }> = {
-    'insights': {
+    'response: .': {
       url: 'https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest#response-body',
       data: buildingData
     },
-    'insights.solarPotential': {
+    'response: .solarPotential': {
       url: 'https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest#solarpotential',
       data: solarPotentialData,
     },
-    'insights.solarPotential.roofSegmentStats': {
+    'response: .solarPotential.roofSegmentStats': {
       url: 'https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest#roofsegmentsizeandsunshinestats',
       data: roofSegmentStats.map((roof, i) => {
         const { stats, ...roofData } = roof
@@ -49,7 +47,7 @@ export default function SolarDetails({ building, solarConfigIdx, colors }: Props
         }
       }),
     },
-    [`insights.solarPotential.solarPanelConfigs[${solarConfigIdx}]`]: {
+    [`response: .solarPotential.solarPanelConfigs[${solarConfigIdx}]`]: {
       url: 'https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest#solarpanelconfig',
       data: {
         ...solarConfigData,
@@ -60,16 +58,17 @@ export default function SolarDetails({ building, solarConfigIdx, colors }: Props
         })),
       },
     },
-    [`insights.solarPotential.solarPanels[0:${solarConfig.panelsCount}]`]: {
+    [`response: .solarPotential.solarPanels[0:${solarConfig.panelsCount}]`]: {
       url: 'https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest#solarpanel',
       data: solarPanels.slice(0, solarConfig.panelsCount),
     },
-    'insights.solarPanels.wholeRoofStats': {
+    'response: .solarPanels.wholeRoofStats': {
       url: 'https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest#SizeAndSunshineStats',
       data: wholeRoofStats,
     },
   }
 
+  const [expanded, setExpanded] = useState<string>(Object.keys(sections)[0])
   return <>
     {Object.keys(sections).map(name =>
       <Accordion

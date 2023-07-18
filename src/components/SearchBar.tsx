@@ -11,24 +11,26 @@ import { Place } from "../common";
 
 interface Props {
   googleMapsApiKey: string
-  initialAddress?: string
+  inputValue: string
+  setInputValue: (value: string) => void
   onPlaceChanged: (place: Place) => void
 }
 
 // https://mui.com/material-ui/react-autocomplete/#google-maps-place
 export default function SearchBar(props: PropsWithChildren<Props>) {
-  const [inputValue, setInputValue] = useState(props.initialAddress)
+  const [address, setAddress] = useState('')
   const [options, setOptions] = useState<readonly google.maps.places.AutocompletePrediction[]>([])
 
-  let googleMapsLoader = new Loader({ apiKey: props.googleMapsApiKey })
-  let autocompleteLoader = googleMapsLoader
+  const googleMapsLoader = new Loader({ apiKey: props.googleMapsApiKey })
+  const autocompleteLoader = googleMapsLoader
     .importLibrary('places')
     .then(() => new google.maps.places.AutocompleteService())
-  let geocoderLoader = googleMapsLoader
+  const geocoderLoader = googleMapsLoader
     .importLibrary('core')
     .then(() => new google.maps.Geocoder())
 
-  async function setAddress(address: string) {
+  async function changeAddress(address: string) {
+    setAddress(address)
     const geocoder = await geocoderLoader
     const response = await geocoder.geocode({
       address: address,
@@ -48,25 +50,23 @@ export default function SearchBar(props: PropsWithChildren<Props>) {
     }
   }
 
-  useEffect(() => {
-    if (props.initialAddress) {
-      setAddress(props.initialAddress)
-    }
-  }, [])
-
   return <Autocomplete
     autoComplete
     onChange={async (_, place) => {
       if (place) {
-        setAddress(place.description)
+        changeAddress(place.description)
       }
     }}
     options={options}
     getOptionLabel={option => option.description}
-    inputValue={inputValue}
+    inputValue={props.inputValue}
     onInputChange={(event, value) => {
       if (event) {
-        setInputValue(value)
+        // Change via user input.
+        props.setInputValue(value)
+      } else if (props.inputValue != address) {
+        // Change via setInputValue().
+        changeAddress(props.inputValue)
       }
     }}
     renderInput={params =>
