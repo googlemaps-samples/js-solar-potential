@@ -13,11 +13,11 @@ export interface DataLayer {
   masked: boolean
   cache: {
     hash: string,
-    data: GeoTiffData[]
+    data: GeoTiffData
     mask: GeoTiffData
   }
   palette?: { colors: string[], min: number, max: number }
-  day?: number
+  day: number
 }
 
 export interface SolarPanelEntity {
@@ -197,7 +197,8 @@ export async function renderDataLayer({
           palette: palette,
         })],
         masked: inputMask,
-        cache: { hash: hash, data: [], mask: mask },
+        cache: { hash: hash, data: mask, mask: mask },
+        day: inputDay,
         boundingBox: mask.boundingBox,
         palette: palette,
       }
@@ -205,7 +206,7 @@ export async function renderDataLayer({
     dsm: async () => {
       const hash = 'dsm'
       const [data, mask] = dataLayer && hash == dataLayer.cache.hash
-        ? [dataLayer.cache.data[0], dataLayer.cache.mask]
+        ? [dataLayer.cache.data, dataLayer.cache.mask]
         : await Promise.all([
           downloadGeoTIFF(dataLayersResponse.dsmUrl, googleMapsApiKey),
           downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey),
@@ -227,7 +228,8 @@ export async function renderDataLayer({
           palette: palette,
         })],
         masked: inputMask,
-        cache: { hash: hash, data: [data], mask: mask },
+        cache: { hash: hash, data: data, mask: mask },
+        day: inputDay,
         boundingBox: mask.boundingBox,
         palette: palette,
       }
@@ -235,7 +237,7 @@ export async function renderDataLayer({
     rgb: async () => {
       const hash = 'rgb'
       const [data, mask] = dataLayer && hash == dataLayer.cache.hash
-        ? [dataLayer.cache.data[0], dataLayer.cache.mask]
+        ? [dataLayer.cache.data, dataLayer.cache.mask]
         : await Promise.all([
           downloadGeoTIFF(dataLayersResponse.rgbUrl, googleMapsApiKey),
           downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey),
@@ -250,14 +252,15 @@ export async function renderDataLayer({
           mask: inputMask ? mask : undefined,
         })],
         masked: inputMask,
-        cache: { hash: hash, data: [data], mask: mask },
+        cache: { hash: hash, data: data, mask: mask },
+        day: inputDay,
         boundingBox: mask.boundingBox,
       }
     },
     annualFlux: async () => {
       const hash = 'annualFlux'
       const [data, mask] = dataLayer && hash == dataLayer.cache.hash
-        ? [dataLayer.cache.data[0], dataLayer.cache.mask]
+        ? [dataLayer.cache.data, dataLayer.cache.mask]
         : await Promise.all([
           downloadGeoTIFF(dataLayersResponse.annualFluxUrl, googleMapsApiKey),
           downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey),
@@ -274,7 +277,8 @@ export async function renderDataLayer({
           palette: palette,
         })],
         masked: inputMask,
-        cache: { hash: hash, data: [data], mask: mask },
+        cache: { hash: hash, data: data, mask: mask },
+        day: inputDay,
         boundingBox: mask.boundingBox,
         palette: palette,
       }
@@ -282,7 +286,7 @@ export async function renderDataLayer({
     monthlyFlux: async () => {
       const hash = 'monthlyFlux'
       const [data, mask] = dataLayer && hash == dataLayer.cache.hash
-        ? [dataLayer.cache.data[0], dataLayer.cache.mask]
+        ? [dataLayer.cache.data, dataLayer.cache.mask]
         : await Promise.all([
           downloadGeoTIFF(dataLayersResponse.monthlyFluxUrl, googleMapsApiKey),
           downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey),
@@ -302,7 +306,8 @@ export async function renderDataLayer({
           })
         ),
         masked: inputMask,
-        cache: { hash: hash, data: [data], mask: mask },
+        cache: { hash: hash, data: data, mask: mask },
+        day: inputDay,
         boundingBox: mask.boundingBox,
         palette: palette,
       }
@@ -310,7 +315,7 @@ export async function renderDataLayer({
     hourlyShade: async () => {
       const hash = `hourlyShade:${inputMonth}`
       const [data, mask] = dataLayer && hash == dataLayer.cache.hash
-        ? [dataLayer.cache.data[0], dataLayer.cache.mask]
+        ? [dataLayer.cache.data, dataLayer.cache.mask]
         : await Promise.all([
           downloadGeoTIFF(dataLayersResponse.hourlyShadeUrls[inputMonth], googleMapsApiKey),
           downloadGeoTIFF(dataLayersResponse.maskUrl, googleMapsApiKey),
@@ -334,7 +339,8 @@ export async function renderDataLayer({
           })
         ),
         masked: inputMask,
-        cache: { hash: hash, data: [data], mask: mask },
+        cache: { hash: hash, data: data, mask: mask },
+        day: inputDay,
         boundingBox: mask.boundingBox,
         palette: palette,
       }

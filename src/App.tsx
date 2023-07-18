@@ -27,7 +27,7 @@ import {
 import GitHubIcon from '@mui/icons-material/GitHub'
 import LaunchIcon from '@mui/icons-material/Launch'
 
-import { DataLayer, SolarPanelEntity, boundingBoxSize, createRoofPins, createSolarPanels, flyTo, normalize, normalizeArray, renderDataLayer } from './utils'
+import { DataLayer, SolarPanelEntity, boundingBoxSize, createRoofPins, createSolarPanels, flyTo, renderDataLayer } from './utils'
 
 import Map from './components/Map'
 import SearchBar from './components/SearchBar'
@@ -354,6 +354,8 @@ export default function App() {
             onChange={inputLayerId => {
               setErrorLayer(null)
               setDataLayer(null)
+              setInputMonth(0)
+              setInputDay(1)
               const defaultSettings: Record<LayerId, () => void> = {
                 mask: () => {
                   setInputAnimation(false)
