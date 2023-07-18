@@ -14,6 +14,7 @@ import {
   Drawer,
   FormControlLabel,
   Grid,
+  IconButton,
   LinearProgress,
   Paper,
   Skeleton,
@@ -22,6 +23,8 @@ import {
   Switch,
   TextField,
 } from '@mui/material'
+import GitHubIcon from '@mui/icons-material/GitHub'
+import LaunchIcon from '@mui/icons-material/Launch'
 
 import { DataLayer, SolarPanelEntity, boundingBoxSize, createRoofPins, createSolarPanels, flyTo, normalize, normalizeArray, renderDataLayer } from './utils'
 
@@ -36,6 +39,9 @@ import DataLayerChoice from './components/DataLayerChoice'
 import { LatLng } from './common'
 import SolarDetails from './components/SolarDetails'
 import Palette from './components/Palette'
+
+// TODO: 
+// - Refactor Maps APIs into services
 
 const cesiumApiKey = import.meta.env.VITE_CESIUM_API_KEY
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
@@ -69,10 +75,6 @@ const roofColors = [
   '#FF772B',  // Orange
   '#699914',  // Green
 ]
-
-// TODO: 
-// - Add button "View on GitHub"
-// - Refactor Maps APIs into services
 
 export default function App() {
   const mapRef = useRef<{ cesiumElement: Cesium.Viewer }>(null)
@@ -284,44 +286,6 @@ export default function App() {
     }
     setInputAnimation(false)
   }
-
-  useEffect(() => {
-    if (inputLayerId && buildingResponse && dataLayersResponse && !loadingLayer) {
-      setLoadingLayer(true)
-      renderDataLayer({
-        inputLayerId: inputLayerId,
-        inputMask: inputMask,
-        inputMonth: inputMonth,
-        inputDay: inputDay,
-        dataLayersResponse: dataLayersResponse,
-        dataLayer: dataLayer,
-        googleMapsApiKey: googleMapsApiKey,
-      }).then(layer => {
-        setDataLayer(layer)
-        setLoadingLayer(false)
-      })
-        .catch((error: any) => {
-          console.error(error)
-          setErrorLayer(error)
-        })
-    }
-  }, [inputLayerId, dataLayersResponse, inputMask, inputMonth, inputDay])
-
-  useEffect(() => {
-    if (!inputAnimation) {
-      return stopAnimation()
-    }
-    switch (inputLayerId) {
-      case 'monthlyFlux':
-        playAnimation(seconds => setInputMonth(seconds % 12))
-        break
-      case 'hourlyShade':
-        playAnimation(seconds => setInputHour(seconds % 24))
-        break
-      default:
-        stopAnimation()
-    }
-  }, [inputLayerId, inputAnimation])
 
   const solarConfigurationSummary = solarConfigs
     ? <Paper>
@@ -535,6 +499,45 @@ export default function App() {
     setInputAddress(googleOffices[initialAddress])
   }, [])
 
+  useEffect(() => {
+    if (inputLayerId && buildingResponse && dataLayersResponse && !loadingLayer) {
+      setLoadingLayer(true)
+      renderDataLayer({
+        inputLayerId: inputLayerId,
+        inputMask: inputMask,
+        inputMonth: inputMonth,
+        inputDay: inputDay,
+        dataLayersResponse: dataLayersResponse,
+        dataLayer: dataLayer,
+        googleMapsApiKey: googleMapsApiKey,
+      }).then(layer => {
+        setDataLayer(layer)
+        setLoadingLayer(false)
+      })
+        .catch((error: any) => {
+          console.error(error)
+          setErrorLayer(error)
+        })
+    }
+  }, [inputLayerId, dataLayersResponse, inputMask, inputMonth, inputDay])
+
+  useEffect(() => {
+    if (!inputAnimation) {
+      return stopAnimation()
+    }
+    switch (inputLayerId) {
+      case 'monthlyFlux':
+        playAnimation(seconds => setInputMonth(seconds % 12))
+        break
+      case 'hourlyShade':
+        playAnimation(seconds => setInputHour(seconds % 24))
+        break
+      default:
+        stopAnimation()
+    }
+  }, [inputLayerId, inputAnimation])
+
+
   return <Box sx={{ display: 'flex' }}>
     <CssBaseline />
 
@@ -612,7 +615,6 @@ export default function App() {
       </Grid>
     </Box>
 
-
     <Drawer
       variant="permanent"
       anchor="right"
@@ -626,12 +628,24 @@ export default function App() {
       }}
     >
       <Box p={1} pt={2} sx={{ overflow: 'auto' }}>
-        <SearchBar
-          googleMapsApiKey={googleMapsApiKey}
-          inputValue={inputAddress}
-          setInputValue={setInputAddress}
-          onPlaceChanged={async place => showSolarPotential(place.center)}
-        />
+        <Stack>
+          <Stack direction='row' justifyContent='space-between'>
+            <Typography variant='h6'>☀️ Solar API demo</Typography>
+            <IconButton
+              href='https://github.com/davidcavazos/solar-potential'
+              target='_blank'
+            >
+              <GitHubIcon />
+            </IconButton>
+          </Stack>
+
+          <SearchBar
+            googleMapsApiKey={googleMapsApiKey}
+            inputValue={inputAddress}
+            setInputValue={setInputAddress}
+            onPlaceChanged={async place => showSolarPotential(place.center)}
+          />
+        </Stack>
 
         {!errorBuilding
           ? <>
@@ -652,7 +666,11 @@ export default function App() {
             This is not an officially supported Google product.
           </Typography>
           <Typography variant='body2' fontSize='small' fontStyle={{ color: '#616161' }}>
-            Rendered with <a href="https://cesium.com">Cesium</a>
+            Rendered with &nbsp;
+            <a href="https://cesium.com">
+              Cesium
+              <LaunchIcon fontSize='small' />
+            </a>
           </Typography>
         </Grid>
       </Box>
