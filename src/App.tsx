@@ -50,7 +50,7 @@ const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 const locations = {
   'Beauty Fix, West Hartford': 'Beauty Fix, North Main Street, West Hartford, CT',
   'West Hartford Acupuncture': 'West Hartford Acupuncture, Oakwood Avenue, West Hartford, CT',
-  'Minami, Tenri, Japan': 'Minami, 23-3 Nikaidōkaminoshōchō, Tenri, Nara, Japan',
+  'Minami, Tenri, Japan': '23-3 Nikaidokaminoshocho, Tenri, Nara 632-0081, Japan',
   'Spare tire, Tenri, Japan': 'Japan, Nara, Tenri, Nikaidōkaminoshōchō, 345-1 SPARE TIRE',
   'Biergarten des Hofbräuhauses, Munich': 'Biergarten des Hofbräuhauses, Platzl, Munich, Germany',
   'Weinbar Griabig, Munich': 'Weinbar Griabig, Bräuhausstraße, Munich, Germany',
