@@ -95,7 +95,7 @@ export async function createSolarPanels({
   info: (panel: SolarPanel, roof: RoofSegmentSizeAndSunshineStats, roofIdx: number) => Record<string, string | JSX.Element>,
 }): Promise<SolarPanelEntity[]> {
   const coordinates = panels.map(panel => Cesium.Cartesian3.fromDegrees(panel.center.longitude, panel.center.latitude))
-  const positions = await viewer.scene.clampToHeightMostDetailed(coordinates, [], 1)
+  const positions = await viewer.scene.clampToHeightMostDetailed(coordinates, [], panelWidth / 2)
   return panels.map((panel, i) => {
     const coords = Cesium.Cartographic.fromCartesian(positions[i])
     const position = Cesium.Cartesian3.fromRadians(coords.longitude, coords.latitude, coords.height + panelDepth)
