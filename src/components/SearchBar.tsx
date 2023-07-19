@@ -32,12 +32,7 @@ export default function SearchBar(props: PropsWithChildren<Props>) {
   async function changeAddress(address: string) {
     setAddress(address)
     const geocoder = await geocoderLoader
-    const response = await geocoder.geocode({
-      address: address,
-      componentRestrictions: {
-        country: 'US',
-      }
-    })
+    const response = await geocoder.geocode({ address: address })
     const result = response.results[0]
     if (result && result.geometry) {
       props.onPlaceChanged({

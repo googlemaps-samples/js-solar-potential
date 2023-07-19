@@ -47,15 +47,17 @@ import Palette from './components/Palette'
 const cesiumApiKey = import.meta.env.VITE_CESIUM_API_KEY
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
 
-const googleOffices = {
-  'Googleplex': 'Googleplex, Amphitheatre Parkway, Mountain View, California',
-  'Moffet Place': 'Google MP2, Borregas Avenue, Sunnyvale, CA',
-  'Seattle': 'Google Seattle Lakeside, North 34th Street, Seattle, WA',
-  'Boulder': 'Google Boulder, Pearl Street, Suite 110, Boulder, CO',
-  'Chicago': 'Google Chicago Fulton Market, North Morgan Street, Chicago, IL',
-  'Kirkland': 'Google Kirkland Urban Central, Urban Plaza, Kirkland, WA',
-  'New York City': 'Google NYC: 8510 Building, 10th Avenue, New York, NY',
-  'San Francisco': 'Google San Francisco, Spear Street, San Francisco, CA',
+const locations = {
+  'Beauty Fix, West Hartford': 'Beauty Fix, North Main Street, West Hartford, CT',
+  'West Hartford Acupuncture': 'West Hartford Acupuncture, Oakwood Avenue, West Hartford, CT',
+  'Minami, Tenri, Japan': 'Minami, 23-3 Nikaidōkaminoshōchō, Tenri, Nara, Japan',
+  'Spare tire, Tenri, Japan': 'Japan, Nara, Tenri, Nikaidōkaminoshōchō, 345-1 SPARE TIRE',
+  'Biergarten des Hofbräuhauses, Munich': 'Biergarten des Hofbräuhauses, Platzl, Munich, Germany',
+  'Weinbar Griabig, Munich': 'Weinbar Griabig, Bräuhausstraße, Munich, Germany',
+  'Legami, Florence': "Legami, Via de' Martelli, Florence, Metropolitan City of Florence, Italy",
+  'Negozio Chicco Firenze, Florence': "Negozio Chicco Firenze, Via de' Vecchietti, Florence, Metropolitan City of Florence, Italy",
+  'Fremont Coffee, Seattle': 'Fremont Coffee Company, North 36th Street, Seattle, WA',
+  'Kaosamai Thai, Seattle': 'Kaosamai Thai Restaurant, North 36th Street, Seattle, WA',
 }
 
 const sidebarWidth = 400
@@ -497,9 +499,9 @@ export default function App() {
     </>
     : <Skeleton variant='rounded' width={130} height={35} />
 
-  const initialAddress = Object.keys(googleOffices)[0]
+  const initialAddress = Object.keys(locations)[0]
   useEffect(() => {
-    setInputAddress(googleOffices[initialAddress])
+    setInputAddress(locations[initialAddress])
   }, [])
 
   useEffect(() => {
@@ -595,12 +597,12 @@ export default function App() {
                 disablePortal
                 size='small'
                 defaultValue={initialAddress}
-                options={Object.keys(googleOffices)}
-                sx={{ width: 200 }}
-                renderInput={(params) => <TextField {...params} label="Visit a Google office" variant='standard' />}
+                options={Object.keys(locations)}
+                sx={{ width: 320 }}
+                renderInput={(params) => <TextField {...params} label="Visit a location" variant='standard' />}
                 onChange={(_, officeName) => {
                   if (officeName) {
-                    setInputAddress(googleOffices[officeName])
+                    setInputAddress(locations[officeName])
                   }
                 }}
               />
