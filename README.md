@@ -1,41 +1,38 @@
-# ☀️ Solar potential demo
+# create-svelte
 
-## Before you begin
+Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
 
-[Set up Maps API](https://console.cloud.google.com/google/maps-apis/start)
+## Creating a project
 
-Enable the APIs:
-- Map tiles: `tile.googleapis.com`
+If you're seeing this, you've probably already done this step. Congrats!
 
-```sh
-npm install
+```bash
+# create a new project in the current directory
+npm create svelte@latest
+
+# create a new project in my-app
+npm create svelte@latest my-app
 ```
 
-Create a `.env` file with the environment variables.
+## Developing
 
-```sh
-# .env
-VITE_GOOGLE_MAPS_API_KEY="Your Google Maps API key"
-VITE_CESIUM_API_KEY="Your Cesium ION key"
-```
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
-## Run locally
-
-```sh
+```bash
 npm run dev
+
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
 ```
 
-## Deploy in Cloud Run
+## Building
 
-[Deploy from a git repo](https://cloud.google.com/run/docs/quickstarts/deploy-continuously#deploy-from-repo)
+To create a production version of your app:
 
-[Deploy from source code](https://cloud.google.com/run/docs/quickstarts/build-and-deploy/deploy-nodejs-service)
-
-```sh
-export LOCATION="us-central1"
-
-gcloud run deploy "solar-potential" \
-  --source="." \
-  --region="$LOCATION" \
-  --allow-unauthenticated
+```bash
+npm run build
 ```
+
+You can preview the production build with `npm run preview`.
+
+> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
