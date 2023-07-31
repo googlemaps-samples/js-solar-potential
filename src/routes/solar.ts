@@ -1,4 +1,4 @@
-import { fromArrayBuffer, type TypedArray } from 'geotiff';
+import * as geotiff from 'geotiff';
 import * as geokeysToProj4 from 'geotiff-geokeys-to-proj4';
 import proj4 from 'proj4';
 
@@ -23,11 +23,18 @@ export interface DataLayersResponse {
   imageryQuality: 'HIGH' | 'MEDIUM' | 'LOW'
 }
 
-export interface GeoTiffData {
+export interface Bounds {
+  north: number
+  south: number
+  east: number
+  west: number
+}
+
+export interface GeoTiff {
   width: number
   height: number
-  rasters: TypedArray[]
-  boundingBox: LatLngBox
+  rasters: Array<number>[]
+  bounds: Bounds
 }
 
 // https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest
@@ -46,14 +53,14 @@ export interface BuildingInsightsResponse {
 }
 
 export interface SolarPotential {
-  maxArrayPanelsCount?: number
-  panelCapacityWatts?: number
-  panelHeightMeters?: number
-  panelWidthMeters?: number
-  panelLifetimeYears?: number
-  maxArrayAreaMeters2?: number
-  maxSunshineHoursPerYear?: number
-  carbonOffsetFactorKgPerMwh?: number
+  maxArrayPanelsCount: number
+  panelCapacityWatts: number
+  panelHeightMeters: number
+  panelWidthMeters: number
+  panelLifetimeYears: number
+  maxArrayAreaMeters2: number
+  maxSunshineHoursPerYear: number
+  carbonOffsetFactorKgPerMwh: number
   wholeRoofStats: SizeAndSunshineStats
   buildingStats: SizeAndSunshineStats
   roofSegmentStats: RoofSegmentSizeAndSunshineStats[]
@@ -63,25 +70,25 @@ export interface SolarPotential {
 }
 
 export interface SizeAndSunshineStats {
-  areaMeters2?: number
+  areaMeters2: number
   sunshineQuantiles: number[]
-  groundAreaMeters2?: number
+  groundAreaMeters2: number
 }
 
 export interface RoofSegmentSizeAndSunshineStats {
-  pitchDegrees?: number
-  azimuthDegrees?: number
+  pitchDegrees: number
+  azimuthDegrees: number
   stats: SizeAndSunshineStats
   center: LatLng
   boundingBox: LatLngBox
-  planeHeightAtCenterMeters?: number
+  planeHeightAtCenterMeters: number
 }
 
 export interface SolarPanel {
   center: LatLng
   orientation: 'LANDSCAPE' | 'PORTRAIT'
-  segmentIndex?: number
-  yearlyEnergyDcKwh?: number
+  segmentIndex: number
+  yearlyEnergyDcKwh: number
 }
 
 export interface SolarPanelConfig {
@@ -114,6 +121,22 @@ export interface Date {
   day: number
 }
 
+export interface RequestError {
+  error: {
+    code: number
+    message: string
+    status: string
+  }
+}
+
+export function showLatLng(point: LatLng, precision = 5) {
+  return `(${point.latitude.toFixed(precision)}, ${point.longitude.toFixed(precision)})`
+}
+
+export function showDate(date: Date) {
+  return `${date.month}/${date.day}/${date.year}`
+}
+
 // https://developers.devsite.corp.google.com/maps/documentation/solar/requests#make-building
 export async function findClosestBuilding(location: google.maps.LatLng, apiKey: string): Promise<BuildingInsightsResponse> {
   console.log(`GET buildingInsights ${JSON.stringify(location)}`)
@@ -123,11 +146,18 @@ export async function findClosestBuilding(location: google.maps.LatLng, apiKey: 
     "location.longitude": location.lng().toString(),
   })
   return fetch(`https://solar.googleapis.com/v1/buildingInsights:findClosest?${params}`)
-    .then(response => response.json())
+    .then(async response => {
+      const content = await response.json()
+      if (response.status != 200) {
+        console.error("findClosestBuilding\n", content)
+        throw content
+      }
+      return content
+    })
 }
 
 // https://developers.devsite.corp.google.com/maps/documentation/solar/requests#make-data
-export async function getDataLayers(location: LatLng, radius_meters: number, apiKey: string): Promise<DataLayersResponse> {
+export async function getDataLayerUrls(location: LatLng, radius_meters: number, apiKey: string): Promise<DataLayersResponse> {
   console.log(`GET dataLayers ${JSON.stringify(location)} ${radius_meters}`)
   const params = new URLSearchParams({
     "key": apiKey,
@@ -136,16 +166,28 @@ export async function getDataLayers(location: LatLng, radius_meters: number, api
     "radius_meters": radius_meters.toString(),
   })
   return fetch(`https://solar.googleapis.com/v1/dataLayers:get?${params}`)
-    .then(response => response.json())
+    .then(async response => {
+      const content = await response.json()
+      if (response.status != 200) {
+        console.error("getDataLayerUrls\n", content)
+        throw content
+      }
+      return content
+    })
 }
 
-export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoTiffData> {
+export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoTiff> {
   console.log(`Download ${url}`)
-  const solarUrl = url.includes('solar.googleapis.com') ? url + `?key=${apiKey}` : url
+  const solarUrl = url.includes('solar.googleapis.com') ? url + `&key=${apiKey}` : url
   const response = await fetch(solarUrl)
+  if (response.status != 200) {
+    const error = await response.json()
+    console.error(`downloadGeoTIFF\n`, error)
+    throw error
+  }
   const arrayBuffer = await response.arrayBuffer()
-  const geotiff = await fromArrayBuffer(arrayBuffer);
-  const image = await geotiff.getImage()
+  const tiff = await geotiff.fromArrayBuffer(arrayBuffer);
+  const image = await tiff.getImage()
   const rasters = await image.readRasters()
 
   // Reproject the bounding box into coordinates.
@@ -165,10 +207,12 @@ export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoT
   return {
     width: rasters.width,
     height: rasters.height,
-    rasters: Array(rasters.length).fill(0).map((_, i) => rasters[i] as TypedArray),
-    boundingBox: {
-      ne: { longitude: ne.x, latitude: ne.y },
-      sw: { longitude: sw.x, latitude: sw.y },
-    },
+    rasters: Array(rasters.length).fill([]).map((_, i) => Array.from(rasters[i] as geotiff.TypedArray)),
+    bounds: {
+      north: ne.y,
+      south: sw.y,
+      east: ne.x,
+      west: sw.x,
+    }
   }
 }
