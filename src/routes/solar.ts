@@ -145,7 +145,7 @@ export async function findClosestBuilding(location: google.maps.LatLng, apiKey: 
     "location.latitude": location.lat().toString(),
     "location.longitude": location.lng().toString(),
   })
-  return fetch(`https://solar.googleapis.com/v1/buildingInsights:findClosest?${params}`)
+  return fetch(`https://solar.googleapis.com/v1/buildingInsights:findClosest?${params}`, { cache: "force-cache" })
     .then(async response => {
       const content = await response.json()
       if (response.status != 200) {
@@ -179,7 +179,7 @@ export async function getDataLayerUrls(location: LatLng, radius_meters: number, 
 export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoTiff> {
   console.log(`Download ${url}`)
   const solarUrl = url.includes('solar.googleapis.com') ? url + `&key=${apiKey}` : url
-  const response = await fetch(solarUrl)
+  const response = await fetch(solarUrl, { cache: "force-cache" })
   if (response.status != 200) {
     const error = await response.json()
     console.error(`downloadGeoTIFF\n`, error)
@@ -207,7 +207,7 @@ export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoT
   return {
     width: rasters.width,
     height: rasters.height,
-    rasters: Array(rasters.length).fill([]).map((_, i) => Array.from(rasters[i] as geotiff.TypedArray)),
+    rasters: [...Array(rasters.length).keys()].map((i) => Array.from(rasters[i] as geotiff.TypedArray)),
     bounds: {
       north: ne.y,
       south: sw.y,

@@ -20,6 +20,7 @@
 	import Show from './Show.svelte';
 	import ShowRecord from './ShowRecord.svelte';
 	import { getLayer, type Layer } from './layer';
+	import Calendar from './Calendar.svelte';
 
 	// TODO:
 	// - Data layers
@@ -44,8 +45,22 @@
 		hourlyShade: 'Hourly shade'
 	};
 
-	let openSection: string = '🗺️ Data layer';
-	// let openSection: string = '🏡 Building insights';
+	const monthNames = [
+		'Jan',
+		'Feb',
+		'Mar',
+		'Apr',
+		'May',
+		'Jun',
+		'Jul',
+		'Aug',
+		'Sep',
+		'Oct',
+		'Nov',
+		'Dec'
+	];
+
+	let expandedSection: string = '🗺️ Data layer';
 	let layerId: LayerId = 'monthlyFlux';
 	let configId: number = 0;
 
@@ -85,7 +100,7 @@
 			tilt: 0
 		});
 
-		map.controls[google.maps.ControlPosition.TOP_CENTER].push(paletteElement);
+		map.controls[google.maps.ControlPosition.TOP_LEFT].push(paletteElement);
 		map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(animationElement);
 
 		showSolarPotential(location);
@@ -116,6 +131,7 @@
 	let layer: Layer | null = null;
 	let overlays: google.maps.GroundOverlay[] = [];
 	async function showSolarPotential(location: google.maps.LatLng) {
+		console.log('showSolarPotential');
 		buildingInsightsResponse = null;
 		dataLayersResponse = null;
 		overlays.map((overlay) => overlay.setMap(null));
@@ -143,6 +159,7 @@
 	let showRoofOnly = false;
 	let interval: NodeJS.Timer | undefined;
 	async function showDataLayer(reset = false) {
+		console.log('showDataLayer');
 		if (reset) {
 			let mapType = 'satellite';
 			showRoofOnly = false;
@@ -221,6 +238,7 @@
 
 	let animationFrame = 0;
 	function initAnimation() {
+		animationFrame %= overlays.length;
 		overlays.map((overlay) => overlay.setMap(null));
 		if (playAnimation) {
 			overlays[animationFrame].setMap(map);
@@ -285,7 +303,7 @@
 	<div bind:this={mapElement} class="w-full" />
 
 	<!-- Side bar -->
-	<aside class="flex-none w-64 md:w-96 p-2 pt-3 overflow-auto">
+	<aside class="flex-none md:w-96 w-80 p-2 pt-3 overflow-auto">
 		<div class="rounded-md shadow-md">
 			<!-- Building insights -->
 			{#if !buildingInsightsResponse}
@@ -295,7 +313,7 @@
 			{:else if 'error' in buildingInsightsResponse}
 				<div class="error-container on-error-container-text">
 					<Expandable
-						bind:section={openSection}
+						bind:section={expandedSection}
 						title="🏡 Building insights"
 						subtitle={`Error: ${buildingInsightsResponse.error.message}`}
 					>
@@ -308,7 +326,7 @@
 				</div>
 			{:else}
 				<Expandable
-					bind:section={openSection}
+					bind:section={expandedSection}
 					title="🏡 Building insights"
 					subtitle={`Yearly energy: ${(
 						buildingInsightsResponse.solarPotential.solarPanelConfigs[configId].yearlyEnergyDcKwh /
@@ -373,7 +391,7 @@
 					<p class="label-medium">{dataLayersResponse.error.message}</p>
 				</div>
 			{:else}
-				<Expandable bind:section={openSection} title="🗺️ Data layer" subtitle={layerId}>
+				<Expandable bind:section={expandedSection} title="🗺️ Data layer" subtitle={layerId}>
 					<Dropdown
 						bind:value={layerId}
 						options={dataLayerOptions}
@@ -416,6 +434,10 @@
 							{/if}
 						</p>
 
+						{#if layerId == 'hourlyShade'}
+							<Calendar bind:month bind:day onChange={() => showDataLayer()} />
+						{/if}
+
 						<div class="flex flex-col">
 							<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
 								<md-switch
@@ -433,7 +455,7 @@
 								<span class="ml-3 text-sm font-medium">Show roof only</span>
 							</label>
 
-							{#if layerId == 'monthlyFlux'}
+							{#if ['monthlyFlux', 'hourlyShade'].includes(layerId)}
 								<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
 									<md-switch
 										id="mask"
@@ -498,36 +520,22 @@
 		{/if}
 	</div>
 
-	<div bind:this={animationElement} class="flex flex-col mb-5">
+	<div bind:this={animationElement} class="mb-5">
 		{#if !layer}
 			<div />
 		{:else if layer.id == 'monthlyFlux'}
-			<div class="surface p-2 pb-0 rounded-lg shadow-md">
-				<p class="text-center label-medium">
-					{[
-						'January',
-						'February',
-						'March',
-						'April',
-						'May',
-						'June',
-						'July',
-						'August',
-						'September',
-						'October',
-						'November',
-						'December'
-					][animationFrame]}
-				</p>
+			<div
+				class="flex items-center p-2 px-2 surface on-surface-text text-center label-large rounded-full shadow-md"
+			>
 				<md-slider
 					class="lg:w-96 md:64 w-32"
-					ticks
 					min={0}
 					max={11}
 					range={true}
 					value-start={animationFrame}
 					value-end={animationFrame}
 					on:change={(event) => {
+						overlays[animationFrame].setMap(null);
 						if (event.target.valueStart != animationFrame) {
 							animationFrame = event.target.valueStart;
 							event.target.valueStart = animationFrame;
@@ -535,38 +543,26 @@
 							animationFrame = event.target.valueEnd;
 							event.target.valueEnd = animationFrame;
 						}
+						overlays[animationFrame].setMap(map);
 					}}
 				/>
+				<div class="w-16">
+					<span class="">{monthNames[animationFrame]}</span>
+				</div>
 			</div>
 		{:else if layerId == 'hourlyShade'}
-			<div class="surface p-2 pb-0 rounded-lg shadow-md">
-				<p class="text-center label-large">
-					<span class="body-large">
-						{'🕛,🕐,🕑,🕒,🕓,🕔,🕕,🕖,🕗,🕘,🕙,🕚'.split(',')[animationFrame % 12]}
-					</span>
-					{#if animationFrame == 0}
-						12:00 am
-					{:else if animationFrame < 10}
-						&nbsp; {animationFrame}:00 am
-					{:else if animationFrame < 12}
-						{animationFrame}:00 am
-					{:else if animationFrame == 12}
-						12:00 pm
-					{:else if animationFrame < 22}
-						&nbsp; {animationFrame - 12}:00 pm
-					{:else}
-						{animationFrame - 12}:00 pm
-					{/if}
-				</p>
+			<div
+				class="flex items-center p-2 px-2 surface on-surface-text text-center label-large rounded-full shadow-md"
+			>
 				<md-slider
 					class="lg:w-96 md:64 w-32"
-					ticks
 					min={0}
 					max={23}
 					range={true}
 					value-start={animationFrame}
 					value-end={animationFrame}
 					on:change={(event) => {
+						overlays[animationFrame].setMap(null);
 						if (event.target.valueStart != animationFrame) {
 							animationFrame = event.target.valueStart;
 							event.target.valueStart = animationFrame;
@@ -574,8 +570,29 @@
 							animationFrame = event.target.valueEnd;
 							event.target.valueEnd = animationFrame;
 						}
+						overlays[animationFrame].setMap(map);
 					}}
 				/>
+				<div class="flex pr-6">
+					<span>{monthNames[month]} {day}, &nbsp;</span>
+					<div class="w-6">
+						<span>
+							{#if animationFrame == 0}
+								12am
+							{:else if animationFrame < 10}
+								{animationFrame}am
+							{:else if animationFrame < 12}
+								{animationFrame}am
+							{:else if animationFrame == 12}
+								12pm
+							{:else if animationFrame < 22}
+								{animationFrame - 12}pm
+							{:else}
+								{animationFrame - 12}pm
+							{/if}
+						</span>
+					</div>
+				</div>
 			</div>
 		{/if}
 	</div>

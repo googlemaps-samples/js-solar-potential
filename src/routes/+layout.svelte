@@ -13,6 +13,7 @@
 	import '@material/web/iconbutton/standard-icon-button';
 	import '@material/web/progress/circular-progress';
 	import '@material/web/progress/linear-progress';
+	import '@material/web/ripple/ripple';
 	import '@material/web/slider/slider';
 	import '@material/web/switch/switch';
 </script>

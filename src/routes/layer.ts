@@ -116,14 +116,14 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
           min: 'Shady',
           max: 'Sunny'
         },
-        render: (showRoofOnly) => Array(12).fill(0).map((_, i) =>
+        render: (showRoofOnly) => [...Array(12).keys()].map((month) =>
           renderPalette({
             data: data,
             mask: showRoofOnly ? mask : undefined,
             colors: colorPalettes[layerId],
             min: 0,
             max: 200,
-            index: i,
+            index: month,
           })
         )
       };
@@ -141,7 +141,7 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
           min: 'Shade',
           max: 'Sun'
         },
-        render: (showRoofOnly, month, day) => Array(24).fill(0).map((_, hour) =>
+        render: (showRoofOnly, month, day) => [...Array(24).keys()].map((hour) =>
           renderPalette({
             data: {
               ...months[month],
