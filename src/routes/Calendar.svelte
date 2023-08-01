@@ -33,14 +33,7 @@
 </script>
 
 <div class="relative">
-	<md-text-button
-		class="w-full"
-		trailing-icon
-		role="button"
-		tabindex={0}
-		on:click={() => (opened = !opened)}
-		on:keyup={undefined}
-	>
+	<md-text-button class="w-full" trailing-icon role={undefined} on:click={() => (opened = !opened)}>
 		<div class="flex items-center">
 			<md-icon>event</md-icon>
 			<span>&nbsp; {Object.keys(months)[month]} {day}</span>
@@ -52,7 +45,6 @@
 			class="fixed top-0 left-0 w-full h-full z-10"
 			role={undefined}
 			on:click={() => (opened = false)}
-			on:keyup={undefined}
 		/>
 
 		<div

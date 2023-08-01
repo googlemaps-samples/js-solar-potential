@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { slide } from 'svelte/transition';
-
 	export let key: any = undefined;
 	export let value: any;
 	export let maxLength = 40;

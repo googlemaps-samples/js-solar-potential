@@ -11,10 +11,8 @@
 	<md-outlined-button
 		class="w-full"
 		trailing-icon
-		role="button"
-		tabindex={0}
+		role={undefined}
 		on:click={() => (opened = !opened)}
-		on:keyup={undefined}
 	>
 		<div class="flex items-center">
 			{value !== undefined ? options[value] : 'Choose an option'}
@@ -27,7 +25,6 @@
 			class="fixed top-0 left-0 w-full h-full z-10"
 			role={undefined}
 			on:click={() => (opened = false)}
-			on:keyup={undefined}
 		/>
 
 		<div

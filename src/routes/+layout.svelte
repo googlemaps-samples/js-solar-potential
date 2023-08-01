@@ -16,6 +16,8 @@
 	import '@material/web/ripple/ripple';
 	import '@material/web/slider/slider';
 	import '@material/web/switch/switch';
+	import '@material/web/textfield/filled-text-field';
+	import '@material/web/textfield/outlined-text-field';
 </script>
 
 <svelte:head>

@@ -16,7 +16,7 @@
 		<span class="block label-medium ml-6 on-surface-variant-text">{subtitle}</span>
 	</div>
 	<div class="grow" />
-	<md-standard-icon-button role="button" tabindex={0} on:click={toggle} on:keyup={null}>
+	<md-standard-icon-button role={undefined} on:click={toggle}>
 		<md-icon>{section == title ? 'expand_less' : 'expand_more'}</md-icon>
 	</md-standard-icon-button>
 </div>
