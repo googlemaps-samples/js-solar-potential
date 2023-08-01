@@ -503,11 +503,11 @@
 </div>
 
 <div class="absolute">
-	<div bind:this={paletteElement} class="mt-2">
+	<div bind:this={paletteElement} class="mt-2 lg:w-64 md:w-32 w-24">
 		{#if layer && layer.palette}
 			<div class="surface on-surface-text p-2 rounded-lg shadow-md">
 				<div
-					class="lg:w-64 md:w-32 w-24 h-2 outline rounded-sm"
+					class="outline rounded-sm"
 					style={`background: linear-gradient(to right, ${layer.palette.colors.map(
 						(hex) => '#' + hex
 					)})`}
@@ -528,7 +528,6 @@
 				class="flex items-center p-2 px-2 surface on-surface-text text-center label-large rounded-full shadow-md"
 			>
 				<md-slider
-					class="lg:w-96 md:64 w-32"
 					min={0}
 					max={11}
 					range={true}
@@ -555,7 +554,6 @@
 				class="flex items-center p-2 px-2 surface on-surface-text text-center label-large rounded-full shadow-md"
 			>
 				<md-slider
-					class="lg:w-96 md:64 w-32"
 					min={0}
 					max={23}
 					range={true}
