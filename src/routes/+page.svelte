@@ -507,7 +507,7 @@
 		{#if layer && layer.palette}
 			<div class="surface on-surface-text p-2 rounded-lg shadow-md">
 				<div
-					class="outline rounded-sm"
+					class="h-2 outline rounded-sm"
 					style={`background: linear-gradient(to right, ${layer.palette.colors.map(
 						(hex) => '#' + hex
 					)})`}
@@ -552,7 +552,7 @@
 			</div>
 		{:else if layerId == 'hourlyShade'}
 			<div
-				class="flex items-center surface on-surface-text text-center label-large rounded-full shadow-md"
+				class="flex items-center pr-6 surface on-surface-text text-center label-large rounded-full shadow-md"
 			>
 				<md-slider
 					class="w-full"
@@ -573,25 +573,24 @@
 						overlays[animationFrame].setMap(map);
 					}}
 				/>
-				<div class="flex pr-6">
-					<span>{monthNames[month]} {day}, &nbsp;</span>
-					<div class="w-6">
-						<span>
-							{#if animationFrame == 0}
-								12am
-							{:else if animationFrame < 10}
-								{animationFrame}am
-							{:else if animationFrame < 12}
-								{animationFrame}am
-							{:else if animationFrame == 12}
-								12pm
-							{:else if animationFrame < 22}
-								{animationFrame - 12}pm
-							{:else}
-								{animationFrame - 12}pm
-							{/if}
-						</span>
-					</div>
+				<div class="flex w-24 whitespace-nowrap">
+					<span>
+						{monthNames[month]}
+						{day},
+						{#if animationFrame == 0}
+							12am
+						{:else if animationFrame < 10}
+							{animationFrame}am
+						{:else if animationFrame < 12}
+							{animationFrame}am
+						{:else if animationFrame == 12}
+							12pm
+						{:else if animationFrame < 22}
+							{animationFrame - 12}pm
+						{:else}
+							{animationFrame - 12}pm
+						{/if}
+					</span>
 				</div>
 			</div>
 		{/if}
