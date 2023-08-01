@@ -61,7 +61,7 @@
 	];
 
 	let expandedSection: string = '🗺️ Data layer';
-	let layerId: LayerId = 'monthlyFlux';
+	let layerId: LayerId = 'annualFlux';
 	let configId: number = 0;
 
 	let buildingInsightsDialog: MdDialog;

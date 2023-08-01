@@ -98,7 +98,7 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
             mask: showRoofOnly ? mask : undefined,
             colors: colorPalettes[layerId],
             min: 0,
-            max: 2000,
+            max: 1800,
           })
         ]
       };
