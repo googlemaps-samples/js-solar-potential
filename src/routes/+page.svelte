@@ -286,7 +286,7 @@
 		id="autocomplete"
 		type="text"
 		placeholder="Search an address"
-		class="surface-variant on-surface-variant-text w-64 rounded px-3 focus:outline-none focus:shadow-outline"
+		class="surface-variant on-surface-variant-text md:w-96 w-64 rounded px-3 focus:outline-none focus:shadow-outline"
 	/>
 	<md-standard-icon-button
 		class="ml-2"
