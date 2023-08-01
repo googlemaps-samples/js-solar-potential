@@ -520,14 +520,15 @@
 		{/if}
 	</div>
 
-	<div bind:this={animationElement} class="mb-5">
+	<div bind:this={animationElement} class="mb-5 p-2 lg:w-96 md:w-72 w-64">
 		{#if !layer}
 			<div />
 		{:else if layer.id == 'monthlyFlux'}
 			<div
-				class="flex items-center p-2 px-2 surface on-surface-text text-center label-large rounded-full shadow-md"
+				class="flex items-center surface on-surface-text text-center label-large rounded-full shadow-md"
 			>
 				<md-slider
+					class="w-full"
 					min={0}
 					max={11}
 					range={true}
@@ -551,9 +552,10 @@
 			</div>
 		{:else if layerId == 'hourlyShade'}
 			<div
-				class="flex items-center p-2 px-2 surface on-surface-text text-center label-large rounded-full shadow-md"
+				class="flex items-center surface on-surface-text text-center label-large rounded-full shadow-md"
 			>
 				<md-slider
+					class="w-full"
 					min={0}
 					max={23}
 					range={true}
