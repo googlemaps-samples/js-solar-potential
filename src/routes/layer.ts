@@ -12,8 +12,8 @@ const colorPalettes: Record<LayerId, string[]> = {
   mask: ['212121', 'EEEEEE'],
   dsm: ['3949AB', '81D4FA', '66BB6A', 'FFE082', 'E53935'],
   rgb: [],
-  annualFlux: ['311B92', 'FF7043', 'FFB74D', 'FFE0B2'],
-  monthlyFlux: ['311B92', 'FF7043', 'FFB74D', 'FFE0B2'],
+  annualFlux: ['00000A', '91009C', 'E64616', 'FEB400', 'FFFFF6'],
+  monthlyFlux: ['00000A', '91009C', 'E64616', 'FEB400', 'FFFFF6'],
   hourlyShade: ['212121', 'FFCA28']
 };
 
