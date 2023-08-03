@@ -23,7 +23,8 @@
 	export let spherical: typeof google.maps.geometry.spherical;
 	export let map: google.maps.Map;
 
-	const dataLayerOptions: Record<LayerId, string> = {
+	const dataLayerOptions: Record<LayerId | 'none', string> = {
+		none: 'No layer',
 		mask: 'Roof mask',
 		dsm: 'Digital Elevation Map',
 		rgb: 'Aerial image',
@@ -52,7 +53,7 @@
 
 	let dataLayersResponse: DataLayersResponse | RequestError | undefined;
 	let dataLayersDialog: MdDialog;
-	let layerId: LayerId = 'monthlyFlux';
+	let layerId: LayerId | 'none' = 'none';
 	let layer: Layer | null = null;
 	let month = 3;
 	let day = 14;
@@ -61,7 +62,6 @@
 	let overlays: google.maps.GroundOverlay[] = [];
 	let animation: NodeJS.Timer | undefined;
 	async function showDataLayer(reset = false) {
-		console.log('showDataLayer');
 		clearInterval(animation);
 		if (reset) {
 			showRoofOnly = ['annualFlux', 'monthlyFlux', 'hourlyShade'].includes(layerId);
@@ -84,6 +84,10 @@
 				dataLayersResponse = await getDataLayerUrls(center, radius, googleMapsApiKey);
 			} catch (e) {
 				dataLayersResponse = e as RequestError;
+				return;
+			}
+
+			if (layerId == 'none') {
 				return;
 			}
 
@@ -183,67 +187,69 @@
 			<Dropdown
 				bind:value={layerId}
 				options={dataLayerOptions}
-				onChange={() => showDataLayer(true)}
+				onChange={(layerId) => {
+					showDataLayer(true);
+				}}
 			/>
 
-			{#if !layer}
-				<div class="p-4">
-					<md-linear-progress indeterminate />
-				</div>
-			{:else}
-				{#if layerId == 'hourlyShade'}
-					<Calendar bind:month bind:day onChange={() => showDataLayer()} />
-				{/if}
+			{#if dataLayersResponse}
+				{#if !layer}
+					<div class="p-4">
+						<md-linear-progress indeterminate />
+					</div>
+				{:else}
+					{#if layerId == 'hourlyShade'}
+						<Calendar bind:month bind:day onChange={() => showDataLayer()} />
+					{/if}
 
-				<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
-					<md-switch
-						id="mask"
-						role={undefined}
-						selected={showRoofOnly}
-						on:click={(event) => {
-							showRoofOnly = event.target.selected;
-							showDataLayer();
-						}}
-						on:keyup={undefined}
-					/>
-					<span class="ml-3 text-sm font-medium">Show roof only</span>
-				</label>
-
-				{#if ['monthlyFlux', 'hourlyShade'].includes(layerId)}
 					<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
 						<md-switch
 							id="mask"
 							role={undefined}
-							selected={!!animation}
+							selected={showRoofOnly}
 							on:click={(event) => {
-								clearInterval(animation);
-								if (event.target.selected) {
-									playAnimation();
-								}
+								showRoofOnly = event.target.selected;
+								showDataLayer();
 							}}
-							on:keyup={undefined}
 						/>
-						<span class="ml-3 text-sm font-medium">Play animation</span>
+						<span class="ml-3 body-large">Show roof only</span>
 					</label>
+
+					{#if ['monthlyFlux', 'hourlyShade'].includes(layerId)}
+						<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
+							<md-switch
+								id="mask"
+								role={undefined}
+								selected={!!animation}
+								on:click={(event) => {
+									clearInterval(animation);
+									if (event.target.selected) {
+										playAnimation();
+									}
+								}}
+							/>
+							<span class="ml-3 body-large">Play animation</span>
+						</label>
+					{/if}
+
+					<div class="flex flex-row">
+						<div class="grow" />
+						<md-tonal-button role={undefined} on:click={() => dataLayersDialog.show()}>
+							More details
+						</md-tonal-button>
+					</div>
+
+					<md-dialog bind:this={dataLayersDialog}>
+						<span slot="headline">
+							<div class="flex items-center">
+								<md-icon>layers</md-icon>
+								<b>&nbsp;{title}</b>
+							</div>
+						</span>
+						<Show value={dataLayersResponse} label="dataLayersResponse" />
+						<md-text-button slot="footer" dialog-action="close">Close</md-text-button>
+					</md-dialog>
 				{/if}
-
-				<div class="flex flex-row">
-					<div class="grow" />
-					<md-tonal-button role={undefined} on:click={() => dataLayersDialog.show()}>
-						More details
-					</md-tonal-button>
-				</div>
-
-				<md-dialog bind:this={dataLayersDialog}>
-					<span slot="headline">
-						<div class="flex items-center">
-							<md-icon>layers</md-icon>
-							<b>&nbsp;{title}</b>
-						</div>
-					</span>
-					<Show value={dataLayersResponse} label="dataLayersResponse" />
-					<md-text-button slot="footer" dialog-action="close">Close</md-text-button>
-				</md-dialog>
 			{/if}
 		</div>
 	</Expandable>

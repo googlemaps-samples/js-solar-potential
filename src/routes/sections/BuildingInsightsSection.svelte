@@ -19,6 +19,8 @@
 	let configElement: HTMLElement;
 	let buildingInsightsDialog: MdDialog;
 
+	let showPanels = true;
+
 	let solarPanels: google.maps.Polygon[] = [];
 
 	export async function showSolarPotential() {
@@ -65,14 +67,12 @@
 			});
 		});
 		const config = solarPotential.solarPanelConfigs[configId];
-		solarPanels.map((panel, i) => panel.setMap(i < config.panelsCount ? map : null));
-
-		map.controls[google.maps.ControlPosition.LEFT_TOP].clear();
-		map.controls[google.maps.ControlPosition.LEFT_TOP].push(summaryElement);
-		map.controls[google.maps.ControlPosition.LEFT_TOP].push(configElement);
+		solarPanels.map((panel, i) => panel.setMap(showPanels && i < config.panelsCount ? map : null));
 	}
 
 	onMount(() => {
+		map.controls[google.maps.ControlPosition.LEFT_TOP].push(summaryElement);
+		map.controls[google.maps.ControlPosition.LEFT_TOP].push(configElement);
 		showSolarPotential();
 	});
 </script>
@@ -134,10 +134,28 @@
 					configId = event.target.value;
 					if (buildingInsightsResponse && !('error' in buildingInsightsResponse)) {
 						const config = buildingInsightsResponse.solarPotential.solarPanelConfigs[configId];
-						solarPanels.map((panel, i) => panel.setMap(i < config.panelsCount ? map : null));
+						solarPanels.map((panel, i) =>
+							panel.setMap(showPanels && i < config.panelsCount ? map : null)
+						);
 					}
 				}}
 			/>
+
+			<button
+				class="p-2 relative inline-flex items-center"
+				on:click={() => {
+					showPanels = !showPanels;
+					if (buildingInsightsResponse && !('error' in buildingInsightsResponse)) {
+						const config = buildingInsightsResponse.solarPotential.solarPanelConfigs[configId];
+						solarPanels.map((panel, i) =>
+							panel.setMap(showPanels && i < config.panelsCount ? map : null)
+						);
+					}
+				}}
+			>
+				<md-switch id="show-panels" role={undefined} selected={showPanels} />
+				<span class="ml-3 body-large">Show panels</span>
+			</button>
 
 			<div class="grid justify-items-end">
 				<md-tonal-button role={undefined} on:click={() => buildingInsightsDialog.show()}>
@@ -250,6 +268,4 @@
 			</div>
 		{/if}
 	</div>
-
-	<!-- <div>Show solar panels</div> -->
 </div>
