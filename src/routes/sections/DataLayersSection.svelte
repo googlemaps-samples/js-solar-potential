@@ -20,6 +20,7 @@
 	export let expandedSection: string;
 	export let buildingInsightsResponse: BuildingInsightsResponse;
 	export let googleMapsApiKey: string;
+	export let showDataLayer = true;
 	export let spherical: typeof google.maps.geometry.spherical;
 	export let map: google.maps.Map;
 
@@ -61,7 +62,7 @@
 	let showRoofOnly = false;
 	let overlays: google.maps.GroundOverlay[] = [];
 	let animation: NodeJS.Timer | undefined;
-	async function showDataLayer(reset = false) {
+	async function drawDataLayer(reset = false) {
 		clearInterval(animation);
 		if (reset) {
 			showRoofOnly = ['annualFlux', 'monthlyFlux', 'hourlyShade'].includes(layerId);
@@ -101,6 +102,10 @@
 
 		const bounds = layer.bounds;
 		overlays.map((overlay) => overlay.setMap(null));
+		if (!showDataLayer) {
+			return;
+		}
+
 		console.log('Render layer:', {
 			layerId: layer.id,
 			showRoofOnly: showRoofOnly,
@@ -131,18 +136,12 @@
 		}, 1000);
 	}
 
-	function dataLayersSummary(dataLayers: DataLayersResponse) {
-		return {
-			'Imagery date': showDate(dataLayers.imageryDate),
-			'Imagery processed': showDate(dataLayers.imageryProcessedDate),
-			'Imagery quality': dataLayers.imageryQuality
-		};
-	}
+	$: showDataLayer, drawDataLayer();
 
 	onMount(() => {
 		map.controls[google.maps.ControlPosition.TOP_LEFT].push(paletteElement);
 		map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(animationElement);
-		showDataLayer(true);
+		drawDataLayer(true);
 	});
 </script>
 
@@ -162,7 +161,7 @@
 					role={undefined}
 					on:click={() => {
 						dataLayersResponse = undefined;
-						showDataLayer();
+						drawDataLayer();
 					}}
 				>
 					Retry
@@ -188,7 +187,7 @@
 				bind:value={layerId}
 				options={dataLayerOptions}
 				onChange={(layerId) => {
-					showDataLayer(true);
+					drawDataLayer(true);
 				}}
 			/>
 
@@ -201,7 +200,7 @@
 					</div>
 				{:else}
 					{#if layerId == 'hourlyShade'}
-						<Calendar bind:month bind:day onChange={() => showDataLayer()} />
+						<Calendar bind:month bind:day onChange={() => drawDataLayer()} />
 					{/if}
 
 					<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
@@ -211,7 +210,7 @@
 							selected={showRoofOnly}
 							on:click={(event) => {
 								showRoofOnly = event.target.selected;
-								showDataLayer();
+								drawDataLayer();
 							}}
 						/>
 						<span class="ml-3 body-large">Show roof only</span>

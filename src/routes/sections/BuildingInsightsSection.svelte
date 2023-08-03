@@ -9,6 +9,7 @@
 	export let title = 'Building Insights';
 	export let configId: number;
 	export let expandedSection: string;
+	export let showDataLayer = true;
 	export let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
 	export let googleMapsApiKey: string;
 	export let location: google.maps.LatLng;
@@ -155,6 +156,14 @@
 			>
 				<md-switch id="show-panels" role={undefined} selected={showPanels} />
 				<span class="ml-3 body-large">Show panels</span>
+			</button>
+
+			<button
+				class="p-2 relative inline-flex items-center"
+				on:click={() => (showDataLayer = !showDataLayer)}
+			>
+				<md-switch id="show-panels" role={undefined} selected={showDataLayer} />
+				<span class="ml-3 body-large">Show data layer</span>
 			</button>
 
 			<div class="grid justify-items-end">

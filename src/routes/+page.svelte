@@ -16,6 +16,7 @@
 	const zoom = 20;
 
 	let expandedSection: string = '';
+	let showDataLayer = true;
 	let configId: number = 0;
 
 	let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
@@ -87,6 +88,7 @@
 						bind:configId
 						bind:expandedSection
 						bind:buildingInsightsResponse
+						bind:showDataLayer
 						{googleMapsApiKey}
 						{location}
 						{spherical}
@@ -100,6 +102,7 @@
 						bind:expandedSection
 						{buildingInsightsResponse}
 						{googleMapsApiKey}
+						{showDataLayer}
 						{spherical}
 						{map}
 					/>
