@@ -1,11 +1,17 @@
 import { downloadGeoTIFF, type DataLayersResponse, type GeoTiff, type LayerId, type Bounds } from "./solar";
 import { renderPalette, renderRGB } from "./visualize";
 
+export interface Palette {
+  colors: string[]
+  min: string
+  max: string
+}
+
 export interface Layer {
   id: LayerId;
   render: (showRoofOnly: boolean, month: number, day: number) => HTMLCanvasElement[]
   bounds: Bounds;
-  palette?: { colors: string[]; min: string; max: string };
+  palette?: Palette;
 }
 
 const colorPalettes: Record<LayerId, string[]> = {

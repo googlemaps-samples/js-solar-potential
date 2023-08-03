@@ -2,18 +2,11 @@
 	import { Loader } from '@googlemaps/js-api-loader';
 	import { onMount } from 'svelte';
 
-	import { findClosestBuilding, type BuildingInsightsResponse, type RequestError } from './solar';
-
-	import SearchBar from './SearchBar.svelte';
+	import SearchBar from './components/SearchBar.svelte';
 	import BuildingInsightsSection from './sections/BuildingInsightsSection.svelte';
 	import DataLayersSection from './sections/DataLayersSection.svelte';
-
-	// TODO:
-	// - Remove top bar
-	//	 * 'Solar API demo' with 'View in GitHub' in side bar
-	//	 * Search box in side bar
-	// 	 * Add legal "Not an official Google product" in side bar
-	// - Financial details
+	import Expandable from './components/Expandable.svelte';
+	import type { BuildingInsightsResponse, RequestError } from './solar';
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const locations = {
@@ -22,10 +15,10 @@
 	let location: google.maps.LatLng | undefined;
 	const zoom = 20;
 
-	// let expandedSection: string = '🗺️ Data layer';
 	let expandedSection: string = '';
 	let configId: number = 0;
 
+	let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
 	let mapElement: HTMLElement;
 	let autocompleteElement: HTMLInputElement;
 
@@ -35,39 +28,35 @@
 	onMount(async () => {
 		// Load the Google Maps services.
 		const loader = new Loader({ apiKey: googleMapsApiKey });
-		const services = {
-			core: loader.importLibrary('core'),
-			maps: loader.importLibrary('maps'),
-			places: loader.importLibrary('places')
-		};
-		spherical = await loader.importLibrary('geometry').then(({ spherical }) => spherical);
 
 		// Get the address information for the default location.
-		const geocoder = await services.core.then(() => new google.maps.Geocoder());
+		await loader.importLibrary('core');
+		const geocoder = new google.maps.Geocoder();
 		const geocoderResponse = await geocoder.geocode({ address: locations.Home });
 
+		// Load the spherical geometry to calculate distances.
+		({ spherical } = await loader.importLibrary('geometry'));
+
 		// Initialize the map at the desired location.
-		const { Map } = await services.maps;
+		const { Map } = await loader.importLibrary('maps');
 		location = geocoderResponse.results[0].geometry.location;
 		map = new Map(mapElement, {
 			center: location,
 			zoom: zoom,
+			tilt: 0,
 			mapTypeId: 'satellite',
+			mapTypeControl: false,
 			fullscreenControl: false,
-			streetViewControl: false,
 			rotateControl: false,
-			tilt: 0
+			streetViewControl: false,
+			zoomControl: false
 		});
 
-		showSolarPotential(location);
-
 		// Initialize the address search autocomplete.
-		const autocomplete = await services.places.then(
-			() =>
-				new google.maps.places.Autocomplete(autocompleteElement, {
-					fields: ['formatted_address', 'geometry', 'name']
-				})
-		);
+		const { Autocomplete } = await loader.importLibrary('places');
+		const autocomplete = new Autocomplete(autocompleteElement, {
+			fields: ['formatted_address', 'geometry', 'name']
+		});
 		autocomplete.addListener('place_changed', async () => {
 			const place = autocomplete.getPlace();
 			if (!place.geometry || !place.geometry.location) {
@@ -78,27 +67,8 @@
 			map.setZoom(zoom);
 
 			location = place.geometry.location;
-			showSolarPotential(location);
 		});
 	});
-
-	let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
-	async function showSolarPotential(location: google.maps.LatLng) {
-		console.log('showSolarPotential');
-		buildingInsightsResponse = undefined;
-
-		try {
-			buildingInsightsResponse = await findClosestBuilding(location, googleMapsApiKey);
-		} catch (e) {
-			buildingInsightsResponse = e as RequestError;
-			return;
-		}
-
-		// Pick the midpoint solar configuration, around 50% capacity.
-		configId = Math.round(buildingInsightsResponse.solarPotential.solarPanelConfigs.length / 2);
-
-		// TODO: create solar panels
-	}
 </script>
 
 <!-- Top bar -->
@@ -112,17 +82,17 @@
 			<SearchBar bind:input={autocompleteElement} />
 
 			<div class="flex flex-col rounded-md shadow-md">
-				<BuildingInsightsSection
-					bind:configId
-					bind:expandedSection
-					{buildingInsightsResponse}
-					onRetry={() => {
-						if (location) {
-							buildingInsightsResponse = undefined;
-							showSolarPotential(location);
-						}
-					}}
-				/>
+				{#if location}
+					<BuildingInsightsSection
+						bind:configId
+						bind:expandedSection
+						bind:buildingInsightsResponse
+						{googleMapsApiKey}
+						{location}
+						{spherical}
+						{map}
+					/>
+				{/if}
 
 				{#if buildingInsightsResponse && !('error' in buildingInsightsResponse)}
 					<md-divider inset />
@@ -133,6 +103,9 @@
 						{spherical}
 						{map}
 					/>
+
+					<md-divider inset />
+					<Expandable icon="payments" title="Financial benefits" subtitle="" />
 				{/if}
 			</div>
 
@@ -145,7 +118,7 @@
 				</md-text-button>
 			</div>
 
-			<span class="pb-4 text-center on-surface-variant-text label-small">
+			<span class="pb-4 text-center outline-text label-small">
 				This is not an officially supported Google product.
 			</span>
 		</div>

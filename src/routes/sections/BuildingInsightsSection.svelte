@@ -1,30 +1,80 @@
 <script lang="ts">
 	import type { MdDialog } from '@material/web/dialog/dialog';
-	import Expandable from '../Expandable.svelte';
-	import ShowRecord from '../ShowRecord.svelte';
-	import { showLatLng, type BuildingInsightsResponse, type RequestError, showDate } from '../solar';
-	import Show from '../Show.svelte';
+	import Expandable from '../components/Expandable.svelte';
+	import { type BuildingInsightsResponse, type RequestError, findClosestBuilding } from '../solar';
+	import Show from '../components/Show.svelte';
+	import { onMount } from 'svelte';
+	import SummaryCard from '../components/SummaryCard.svelte';
 
-	export let title = '🏡 Building insights';
+	export let title = 'Building Insights';
 	export let configId: number;
 	export let expandedSection: string;
 	export let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
-	export let onRetry: () => void = () => {};
+	export let googleMapsApiKey: string;
+	export let location: google.maps.LatLng;
+	export let spherical: typeof google.maps.geometry.spherical;
+	export let map: google.maps.Map;
 
+	let summaryElement: HTMLElement;
+	let configElement: HTMLElement;
 	let buildingInsightsDialog: MdDialog;
 
-	function buildingInsightsSummary(building: BuildingInsightsResponse, configId: number) {
-		const solarPotential = building.solarPotential;
-		const solarConfig = solarPotential.solarPanelConfigs[configId];
-		return {
-			'Config ID': configId,
-			'Total panels': solarConfig.panelsCount,
-			Center: `${showLatLng(building.center)}`,
-			'Carbon offset factor': `${solarPotential.carbonOffsetFactorKgPerMwh?.toFixed(1)} Kg/MWh`,
-			'Maximum sunshine': `${solarPotential.maxSunshineHoursPerYear?.toFixed(1)} hr/year`,
-			'Imagery date': `${showDate(building.imageryDate)}`
-		};
+	let solarPanels: google.maps.Polygon[] = [];
+
+	export async function showSolarPotential() {
+		console.log('showSolarPotential');
+		buildingInsightsResponse = undefined;
+		solarPanels.map((panel) => panel.setMap(null));
+		solarPanels = [];
+
+		try {
+			buildingInsightsResponse = await findClosestBuilding(location, googleMapsApiKey);
+		} catch (e) {
+			buildingInsightsResponse = e as RequestError;
+			return;
+		}
+
+		// Default to the midpoint solar configuration, around 50% capacity.
+		const solarPotential = buildingInsightsResponse.solarPotential;
+		configId = Math.round(solarPotential.solarPanelConfigs.length / 2);
+
+		solarPanels = solarPotential.solarPanels.map((panel) => {
+			const [w, h] = [solarPotential.panelWidthMeters / 2, solarPotential.panelHeightMeters / 2];
+			const points = [
+				{ x: +w, y: +h }, // top right
+				{ x: +w, y: -h }, // bottom right
+				{ x: -w, y: -h }, // bottom left
+				{ x: -w, y: +h }, // top left
+				{ x: +w, y: +h } //  top right
+			];
+			const orientation = panel.orientation == 'PORTRAIT' ? 90 : 0;
+			const azimuth = solarPotential.roofSegmentStats[panel.segmentIndex].azimuthDegrees;
+			return new google.maps.Polygon({
+				paths: points.map(({ x, y }) =>
+					spherical.computeOffset(
+						{ lat: panel.center.latitude, lng: panel.center.longitude },
+						Math.sqrt(x * x + y * y),
+						Math.atan2(y, x) * (180 / Math.PI) + orientation + azimuth
+					)
+				),
+				strokeColor: '#B0BEC5',
+				strokeOpacity: 0.9,
+				strokeWeight: 1,
+				fillColor: '#311B92',
+				fillOpacity: 0.6
+			});
+		});
+		const config = solarPotential.solarPanelConfigs[configId];
+		solarPanels.map((panel, i) => panel.setMap(i < config.panelsCount ? map : null));
+
+		map.controls[google.maps.ControlPosition.LEFT_TOP].clear();
+		map.controls[google.maps.ControlPosition.LEFT_TOP].push(summaryElement);
+		map.controls[google.maps.ControlPosition.LEFT_TOP].push(configElement);
 	}
+
+	onMount(() => {
+		showSolarPotential();
+	});
 </script>
 
 {#if !buildingInsightsResponse}
@@ -33,12 +83,17 @@
 	</div>
 {:else if 'error' in buildingInsightsResponse}
 	<div class="error-container on-error-container-text">
-		<Expandable section={title} {title} subtitle={buildingInsightsResponse.error.status}>
+		<Expandable
+			section={title}
+			icon="error"
+			{title}
+			subtitle={buildingInsightsResponse.error.status}
+		>
 			<div class="grid py-8 place-items-center">
 				<p class="title-large">ERROR {buildingInsightsResponse.error.code}</p>
 				<p class="body-medium">{buildingInsightsResponse.error.status}</p>
 				<p class="label-medium">{buildingInsightsResponse.error.message}</p>
-				<md-filled-button class="pt-6" role={undefined} on:click={onRetry}>
+				<md-filled-button class="pt-6" role={undefined} on:click={() => showSolarPotential()}>
 					Retry
 					<md-icon slot="icon">refresh</md-icon>
 				</md-filled-button>
@@ -48,45 +103,153 @@
 {:else}
 	<Expandable
 		bind:section={expandedSection}
+		icon="home"
 		{title}
 		subtitle={`Yearly energy: ${(
 			buildingInsightsResponse.solarPotential.solarPanelConfigs[configId].yearlyEnergyDcKwh / 1000
 		).toFixed(2)} MWh`}
 	>
-		<p class="label-medium on-surface-variant-text">
-			{buildingInsightsResponse.solarPotential.solarPanelConfigs.length} possible configurations
-		</p>
+		<div class="flex flex-col space-y-2 px-2">
+			<span class="outline-text label-medium">
+				<b>{title}</b> provides data on the location, dimensions & solar potential of a building.
+			</span>
 
-		<div class="flex flex-col pt-6">
-			<p class="label-large text-center">Yearly energy</p>
-			<div class="flex flex-row">
-				<md-slider
-					class="grow"
-					max={buildingInsightsResponse.solarPotential.solarPanelConfigs.length - 1}
-					on:change={(event) => (configId = event.target.value)}
-				/>
-				<span
-					>{(
-						buildingInsightsResponse.solarPotential.solarPanelConfigs[configId].yearlyEnergyDcKwh /
-						1000
-					).toFixed(2)} MWh</span
-				>
+			<table class="table-auto w-full body-medium secondary-text">
+				<tr>
+					<td class="primary-text"><md-icon>solar_power</md-icon> </td>
+					<th class="pl-2 text-left">Panels count</th>
+					<td class="pl-2 text-right">
+						<span>
+							{buildingInsightsResponse.solarPotential.solarPanelConfigs[configId].panelsCount}
+						</span>
+						<span>panels</span>
+					</td>
+				</tr>
+			</table>
+
+			<md-slider
+				class="w-full"
+				max={buildingInsightsResponse.solarPotential.solarPanelConfigs.length - 1}
+				on:change={(event) => {
+					configId = event.target.value;
+					if (buildingInsightsResponse && !('error' in buildingInsightsResponse)) {
+						const config = buildingInsightsResponse.solarPotential.solarPanelConfigs[configId];
+						solarPanels.map((panel, i) => panel.setMap(i < config.panelsCount ? map : null));
+					}
+				}}
+			/>
+
+			<div class="grid justify-items-end">
+				<md-tonal-button role={undefined} on:click={() => buildingInsightsDialog.show()}>
+					More details
+				</md-tonal-button>
 			</div>
+
+			<md-dialog bind:this={buildingInsightsDialog}>
+				<span slot="headline">
+					<div class="flex items-center">
+						<md-icon>home</md-icon>
+						<b>&nbsp;{title}</b>
+					</div>
+				</span>
+				<Show value={buildingInsightsResponse} label="buildingInsightsResponse" />
+				<md-text-button slot="footer" dialog-action="close">Close</md-text-button>
+			</md-dialog>
 		</div>
-
-		<ShowRecord fixed fields={buildingInsightsSummary(buildingInsightsResponse, configId)} />
-
-		<div class="flex flex-row pt-4">
-			<div class="grow" />
-			<md-tonal-button role={undefined} on:click={() => buildingInsightsDialog.show()}>
-				More details
-			</md-tonal-button>
-		</div>
-
-		<md-dialog bind:this={buildingInsightsDialog}>
-			<span slot="headline">🏡 Building insights</span>
-			<Show value={buildingInsightsResponse} label="buildingInsightsResponse" />
-			<md-text-button slot="footer" dialog-action="close">Close</md-text-button>
-		</md-dialog>
 	</Expandable>
 {/if}
+
+<div class="absolute">
+	<div bind:this={summaryElement} class="w-72">
+		{#if expandedSection == title && buildingInsightsResponse && !('error' in buildingInsightsResponse)}
+			<div class="flex flex-col space-y-2 m-2">
+				<SummaryCard
+					icon="home"
+					{title}
+					rows={[
+						{
+							icon: 'wb_sunny',
+							name: 'Annual sunshine',
+							value: buildingInsightsResponse.solarPotential.maxSunshineHoursPerYear.toFixed(1),
+							units: 'hr'
+						},
+						{
+							icon: 'square_foot',
+							name: 'Roof area',
+							value: buildingInsightsResponse.solarPotential.wholeRoofStats.areaMeters2.toFixed(1),
+							units: 'm²'
+						},
+						{
+							icon: 'solar_power',
+							name: 'Max panel count',
+							value: buildingInsightsResponse.solarPotential.solarPanels.length,
+							units: 'panels'
+						},
+						{
+							icon: 'co2',
+							name: 'CO₂ savings',
+							value: buildingInsightsResponse.solarPotential.carbonOffsetFactorKgPerMwh.toFixed(1),
+							units: 'Kg/MWh'
+						}
+					]}
+				/>
+
+				<div class="p-4 w-full surface on-surface-text rounded-lg shadow-md">
+					<div class="flex justify-around">
+						<div class="grid place-items-center">
+							<p class="p-2 body-large">Panels count</p>
+							<div class="relative" style="width: 72px; height: 72px">
+								<md-circular-progress
+									value={buildingInsightsResponse.solarPotential.solarPanelConfigs[configId]
+										.panelsCount}
+									max={solarPanels.length}
+									style="--md-circular-progress-size: 72px;"
+								/>
+								<md-standard-icon-button class="absolute inset-0 m-auto">
+									<md-icon class="primary-text">solar_power</md-icon>
+								</md-standard-icon-button>
+							</div>
+							<p class="p-2 body-medium">
+								<span class="primary-text">
+									<b>
+										{buildingInsightsResponse.solarPotential.solarPanelConfigs[configId]
+											.panelsCount}
+									</b>
+								</span>
+								<span>/ {solarPanels.length}</span>
+							</p>
+						</div>
+
+						<div class="grid place-items-center">
+							<p class="p-2 body-large">Yearly energy</p>
+							<div class="relative" style="width: 72px; height: 72px">
+								<md-circular-progress
+									value={buildingInsightsResponse.solarPotential.solarPanelConfigs[configId]
+										.yearlyEnergyDcKwh}
+									max={buildingInsightsResponse.solarPotential.solarPanelConfigs.slice(-1)[0]
+										.yearlyEnergyDcKwh}
+									style="--md-circular-progress-size: 72px;"
+								/>
+								<md-standard-icon-button class="absolute inset-0 m-auto">
+									<md-icon class="primary-text">energy_savings_leaf</md-icon>
+								</md-standard-icon-button>
+							</div>
+							<p class="p-2 body-medium">
+								<span class="primary-text">
+									<b>
+										{buildingInsightsResponse.solarPotential.solarPanelConfigs[
+											configId
+										].yearlyEnergyDcKwh.toFixed(1)}
+									</b>
+								</span>
+								<span>KWh</span>
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		{/if}
+	</div>
+
+	<!-- <div>Show solar panels</div> -->
+</div>
