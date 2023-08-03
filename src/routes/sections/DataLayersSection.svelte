@@ -53,7 +53,7 @@
 
 	let dataLayersResponse: DataLayersResponse | RequestError | undefined;
 	let dataLayersDialog: MdDialog;
-	let layerId: LayerId | 'none' = 'none';
+	let layerId: LayerId | 'none' = 'monthlyFlux';
 	let layer: Layer | null = null;
 	let month = 3;
 	let day = 14;
@@ -193,7 +193,9 @@
 			/>
 
 			{#if dataLayersResponse}
-				{#if !layer}
+				{#if layerId == 'none'}
+					<div />
+				{:else if !layer}
 					<div class="p-4">
 						<md-linear-progress indeterminate />
 					</div>
@@ -231,25 +233,24 @@
 							<span class="ml-3 body-large">Play animation</span>
 						</label>
 					{/if}
-
-					<div class="flex flex-row">
-						<div class="grow" />
-						<md-tonal-button role={undefined} on:click={() => dataLayersDialog.show()}>
-							More details
-						</md-tonal-button>
-					</div>
-
-					<md-dialog bind:this={dataLayersDialog}>
-						<span slot="headline">
-							<div class="flex items-center">
-								<md-icon>layers</md-icon>
-								<b>&nbsp;{title}</b>
-							</div>
-						</span>
-						<Show value={dataLayersResponse} label="dataLayersResponse" />
-						<md-text-button slot="footer" dialog-action="close">Close</md-text-button>
-					</md-dialog>
 				{/if}
+				<div class="flex flex-row">
+					<div class="grow" />
+					<md-tonal-button role={undefined} on:click={() => dataLayersDialog.show()}>
+						More details
+					</md-tonal-button>
+				</div>
+
+				<md-dialog bind:this={dataLayersDialog}>
+					<span slot="headline">
+						<div class="flex items-center">
+							<md-icon>layers</md-icon>
+							<b>&nbsp;{title}</b>
+						</div>
+					</span>
+					<Show value={dataLayersResponse} label="dataLayersResponse" />
+					<md-text-button slot="footer" dialog-action="close">Close</md-text-button>
+				</md-dialog>
 			{/if}
 		</div>
 	</Expandable>
