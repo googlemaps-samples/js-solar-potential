@@ -114,7 +114,7 @@
 
 			const chart = new google.charts.Line(costChart);
 			const options = google.charts.Line.convertOptions({
-				title: `Cumulative cost in ${installationLifeSpan} years`,
+				title: `Cost analysis for ${installationLifeSpan} years`,
 				width: 350,
 				height: 200,
 			});
@@ -362,7 +362,7 @@
 						},
 						{
 							icon: 'savings',
-							name: 'Savings with solar',
+							name: 'Savings',
 							value: showMoney(savings),
 						},
 						{
