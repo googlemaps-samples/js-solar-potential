@@ -11,7 +11,7 @@
 	import { onMount } from 'svelte';
 	import SummaryCard from '../components/SummaryCard.svelte';
 	import { createPalette, normalize, rgbToColor } from '../visualize';
-	import { ironPalette } from '../colors';
+	import { panelsPalette } from '../colors';
 
 	export let configId: number;
 	export let expandedSection: string;
@@ -62,7 +62,7 @@
 		console.log(configId);
 
 		// Create the solar panels on the map.
-		const palette = createPalette(ironPalette, 256).map(rgbToColor);
+		const palette = createPalette(panelsPalette, 256).map(rgbToColor);
 		const minEnergy = solarPotential.solarPanels.slice(-1)[0].yearlyEnergyDcKwh;
 		const maxEnergy = solarPotential.solarPanels[0].yearlyEnergyDcKwh;
 		solarPanels = solarPotential.solarPanels.map((panel) => {
@@ -85,13 +85,11 @@
 						Math.atan2(y, x) * (180 / Math.PI) + orientation + azimuth,
 					),
 				),
-				// strokeColor: '#B0BEC5',
-				strokeColor: '#311B92',
-				strokeOpacity: 1,
+				strokeColor: '#B0BEC5',
+				strokeOpacity: 0.9,
 				strokeWeight: 1,
-				// fillColor: '#311B92',
 				fillColor: palette[colorIndex],
-				fillOpacity: 0.85,
+				fillOpacity: 0.9,
 			});
 		});
 	}
