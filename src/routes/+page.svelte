@@ -5,7 +5,7 @@
 	import SearchBar from './components/SearchBar.svelte';
 	import BuildingInsightsSection from './sections/BuildingInsightsSection.svelte';
 	import DataLayersSection from './sections/DataLayersSection.svelte';
-	import type { BuildingInsightsResponse, RequestError, SolarPanelConfig } from './solar';
+	import type { BuildingInsightsResponse, RequestError } from './solar';
 	import FinancialBenefitsSection from './sections/FinancialBenefitsSection.svelte';
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -17,7 +17,10 @@
 
 	let expandedSection: string = '';
 	let showDataLayer = true;
-	let solarPanelConfig: SolarPanelConfig | undefined;
+	let monthlyAverageEnergyBill = 300;
+	let energyCostPerKWh = 0.31;
+	let dcToAcDerate = 0.85;
+	let configId = 0;
 
 	let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
 	let mapElement: HTMLElement;
@@ -85,10 +88,13 @@
 			<div class="flex flex-col rounded-md shadow-md">
 				{#if location}
 					<BuildingInsightsSection
-						bind:solarPanelConfig
+						bind:configId
 						bind:expandedSection
 						bind:buildingInsightsResponse
 						bind:showDataLayer
+						{monthlyAverageEnergyBill}
+						{energyCostPerKWh}
+						{dcToAcDerate}
 						{googleMapsApiKey}
 						{location}
 						{spherical}
@@ -107,15 +113,16 @@
 						{map}
 					/>
 
-					{#if solarPanelConfig}
-						<md-divider inset />
-						<FinancialBenefitsSection
-							bind:expandedSection
-							bind:solarPanelConfig
-							solarPanelConfigs={buildingInsightsResponse.solarPotential.solarPanelConfigs}
-							panelCapacityWatts={buildingInsightsResponse.solarPotential.panelCapacityWatts}
-						/>
-					{/if}
+					<md-divider inset />
+					<FinancialBenefitsSection
+						bind:expandedSection
+						bind:configId
+						bind:monthlyAverageEnergyBill
+						bind:energyCostPerKWh
+						bind:dcToAcDerate
+						solarPanelConfigs={buildingInsightsResponse.solarPotential.solarPanelConfigs}
+						panelCapacityWatts={buildingInsightsResponse.solarPotential.panelCapacityWatts}
+					/>
 				{/if}
 			</div>
 

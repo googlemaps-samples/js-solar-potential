@@ -13,9 +13,12 @@
 	import { createPalette, normalize, rgbToColor } from '../visualize';
 	import { ironPalette } from '../colors';
 
-	export let solarPanelConfig: SolarPanelConfig | undefined;
+	export let configId: number;
 	export let expandedSection: string;
 	export let showDataLayer = true;
+	export let monthlyAverageEnergyBill: number;
+	export let energyCostPerKWh: number;
+	export let dcToAcDerate: number;
 	export let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
 	export let googleMapsApiKey: string;
 	export let location: google.maps.LatLng;
@@ -30,6 +33,11 @@
 	let showPanels = true;
 
 	let solarPanels: google.maps.Polygon[] = [];
+
+	let solarPanelConfig: SolarPanelConfig | undefined;
+	$: if (buildingInsightsResponse && !('error' in buildingInsightsResponse)) {
+		solarPanelConfig = buildingInsightsResponse.solarPotential.solarPanelConfigs[configId];
+	}
 
 	export async function showSolarPotential() {
 		console.log('showSolarPotential');
@@ -46,8 +54,12 @@
 
 		// Default to the midpoint solar configuration, around 50% capacity.
 		const solarPotential = buildingInsightsResponse.solarPotential;
-		const configId = Math.round(solarPotential.solarPanelConfigs.length / 2);
-		solarPanelConfig = solarPotential.solarPanelConfigs[configId];
+		const yearlyEnergy = (monthlyAverageEnergyBill / energyCostPerKWh) * 12;
+		// configId = Math.round(solarPotential.solarPanelConfigs.length / 2);
+		configId = solarPotential.solarPanelConfigs.findIndex(
+			(config) => config.yearlyEnergyDcKwh * dcToAcDerate >= yearlyEnergy,
+		);
+		console.log(configId);
 
 		// Create the solar panels on the map.
 		const palette = createPalette(ironPalette, 256).map(rgbToColor);
@@ -140,13 +152,9 @@
 
 			<md-slider
 				class="w-full"
+				value={configId}
 				max={buildingInsightsResponse.solarPotential.solarPanelConfigs.length - 1}
-				on:change={(event) => {
-					if (buildingInsightsResponse && !('error' in buildingInsightsResponse)) {
-						const configId = event.target.value;
-						solarPanelConfig = buildingInsightsResponse.solarPotential.solarPanelConfigs[configId];
-					}
-				}}
+				on:change={(event) => (configId = event.target.value)}
 			/>
 
 			<button

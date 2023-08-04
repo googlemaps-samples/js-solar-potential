@@ -8,7 +8,10 @@
 	import Table from '../components/Table.svelte';
 
 	export let expandedSection: string;
-	export let solarPanelConfig: SolarPanelConfig;
+	export let configId: number;
+	export let monthlyAverageEnergyBill: number;
+	export let energyCostPerKWh: number;
+	export let dcToAcDerate;
 	export let solarPanelConfigs: SolarPanelConfig[];
 	export let panelCapacityWatts: number;
 
@@ -19,10 +22,7 @@
 	let showAdvancedSettings = false;
 
 	let installationSizeKWh: number;
-	$: installationSizeKWh = (solarPanelConfig.panelsCount * panelCapacityWatts) / 1000;
-
-	let monthlyAverageEnergyBill: number = 300;
-	let energyCostPerKWh: number = 0.31;
+	$: installationSizeKWh = (solarPanelConfigs[configId].panelsCount * panelCapacityWatts) / 1000;
 
 	let monthlyKWhEnergyConsumption: number;
 	$: monthlyKWhEnergyConsumption = monthlyAverageEnergyBill / energyCostPerKWh;
@@ -30,9 +30,8 @@
 	let yearlyKWhEnergyConsumption: number;
 	$: yearlyKWhEnergyConsumption = monthlyKWhEnergyConsumption * 12;
 
-	let dcToAcDerate = 0.85;
 	let initialAcKWhPerYear: number;
-	$: initialAcKWhPerYear = solarPanelConfig.yearlyEnergyDcKwh * dcToAcDerate;
+	$: initialAcKWhPerYear = solarPanelConfigs[configId].yearlyEnergyDcKwh * dcToAcDerate;
 
 	let installationLifeSpan = 20;
 	let efficiencyDepreciationFactor = 0.995;
@@ -78,6 +77,9 @@
 	let savings: number;
 	$: savings = costOfElectricityWithoutSolar - totalCostWithSolar;
 
+	let energyCovered: number;
+	$: energyCovered = yearlyProductionAcKWh[0] / yearlyKWhEnergyConsumption;
+
 	let breakEvenYear: number = -1;
 	$: GoogleCharts.load(
 		() => {
@@ -112,7 +114,7 @@
 
 			const chart = new google.charts.Line(costChart);
 			const options = google.charts.Line.convertOptions({
-				title: `Cumulative cost (${installationLifeSpan} years)`,
+				title: `Cumulative cost in ${installationLifeSpan} years`,
 				width: 350,
 				height: 200,
 			});
@@ -129,8 +131,13 @@
 	}
 </script>
 
-<Expandable bind:section={expandedSection} {icon} {title} subtitle="">
-	<div class="flex flex-col space-y-4">
+<Expandable
+	bind:section={expandedSection}
+	{icon}
+	{title}
+	subtitle={`Savings: ${showMoney(savings)} in ${installationLifeSpan} years`}
+>
+	<div class="flex flex-col space-y-4 pt-1">
 		<md-outlined-text-field
 			type="number"
 			label="Average monthly energy bill"
@@ -169,18 +176,16 @@
 					<td class="primary-text"><md-icon>solar_power</md-icon> </td>
 					<th class="pl-2 text-left">Panels count</th>
 					<td class="pl-2 text-right">
-						<span>{solarPanelConfig.panelsCount} panels</span>
+						<span>{solarPanelConfigs[configId].panelsCount} panels</span>
 					</td>
 				</tr>
 			</table>
 
 			<md-slider
 				class="w-full"
+				value={configId ?? 0}
 				max={solarPanelConfigs.length - 1}
-				on:change={(event) => {
-					const configId = event.target.value;
-					solarPanelConfig = solarPanelConfigs[configId];
-				}}
+				on:change={(event) => (configId = event.target.value)}
 			/>
 		</div>
 
@@ -309,7 +314,7 @@
 					{
 						icon: 'solar_power',
 						name: 'Panels count',
-						value: solarPanelConfig.panelsCount,
+						value: solarPanelConfigs[configId].panelsCount,
 						units: 'panels',
 					},
 					{
@@ -322,6 +327,19 @@
 						icon: 'request_quote',
 						name: 'Installation cost',
 						value: showMoney(installationCost),
+					},
+					{
+						icon: [
+							'battery_1_bar',
+							'battery_2_bar',
+							'battery_3_bar',
+							'battery_4_bar',
+							'battery_5_bar',
+							'battery_charging_full',
+						][Math.floor(Math.min(energyCovered, 1) * 5)],
+						name: 'Energy covered',
+						value: Math.round(energyCovered * 100),
+						units: '%',
 					},
 				]}
 			/>
@@ -350,7 +368,7 @@
 						{
 							icon: 'balance',
 							name: 'Break even',
-							value: breakEvenYear < 0 ? '--' : breakEvenYear,
+							value: breakEvenYear >= 0 ? breakEvenYear : '--',
 							units: 'years',
 						},
 					]}
