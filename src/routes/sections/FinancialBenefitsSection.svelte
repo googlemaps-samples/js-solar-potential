@@ -10,8 +10,6 @@
 	export let expandedSection: string;
 	export let solarPanelConfig: SolarPanelConfig;
 	export let solarPanelConfigs: SolarPanelConfig[];
-	export let panelHeightMeters: number;
-	export let panelWidthMeters: number;
 	export let panelCapacityWatts: number;
 
 	const icon = 'payments';
@@ -23,10 +21,7 @@
 	let installationSizeKWh: number;
 	$: installationSizeKWh = (solarPanelConfig.panelsCount * panelCapacityWatts) / 1000;
 
-	let panelsAreaM2: number;
-	$: panelsAreaM2 = panelWidthMeters * panelHeightMeters * solarPanelConfig.panelsCount;
-
-	let monthlyAverageEnergyBill: number = 1000;
+	let monthlyAverageEnergyBill: number = 300;
 	let energyCostPerKWh: number = 0.31;
 
 	let monthlyKWhEnergyConsumption: number;
@@ -52,12 +47,14 @@
 	let costIncreaseFactor = 1.022;
 	let discountRate = 1.04;
 	let yearlyUtilityBillEstimates: number[];
-	$: yearlyUtilityBillEstimates = yearlyProductionAcKWh.map(
-		(yearlyKWhEnergyProduced, year) =>
+	$: yearlyUtilityBillEstimates = yearlyProductionAcKWh.map((yearlyKWhEnergyProduced, year) =>
+		Math.max(
 			((yearlyKWhEnergyConsumption - yearlyKWhEnergyProduced) *
 				energyCostPerKWh *
 				costIncreaseFactor ** year) /
-			discountRate ** year,
+				discountRate ** year,
+			0,
+		),
 	);
 
 	let remainingLifetimeUtilityBill: number;

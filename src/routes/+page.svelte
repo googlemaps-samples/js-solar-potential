@@ -113,8 +113,6 @@
 							bind:expandedSection
 							bind:solarPanelConfig
 							solarPanelConfigs={buildingInsightsResponse.solarPotential.solarPanelConfigs}
-							panelHeightMeters={buildingInsightsResponse.solarPotential.panelHeightMeters}
-							panelWidthMeters={buildingInsightsResponse.solarPotential.panelWidthMeters}
 							panelCapacityWatts={buildingInsightsResponse.solarPotential.panelCapacityWatts}
 						/>
 					{/if}
