@@ -5,19 +5,19 @@
 	import SearchBar from './components/SearchBar.svelte';
 	import BuildingInsightsSection from './sections/BuildingInsightsSection.svelte';
 	import DataLayersSection from './sections/DataLayersSection.svelte';
-	import Expandable from './components/Expandable.svelte';
-	import type { BuildingInsightsResponse, RequestError } from './solar';
+	import type { BuildingInsightsResponse, RequestError, SolarPanelConfig } from './solar';
+	import FinancialBenefitsSection from './sections/FinancialBenefitsSection.svelte';
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const locations = {
-		Home: '921 W San Gabriel Ave, Fresno, CA 93705'
+		Home: '921 W San Gabriel Ave, Fresno, CA 93705',
 	};
 	let location: google.maps.LatLng | undefined;
 	const zoom = 20;
 
 	let expandedSection: string = '';
 	let showDataLayer = true;
-	let configId: number = 0;
+	let solarPanelConfig: SolarPanelConfig | undefined;
 
 	let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
 	let mapElement: HTMLElement;
@@ -50,13 +50,13 @@
 			fullscreenControl: false,
 			rotateControl: false,
 			streetViewControl: false,
-			zoomControl: false
+			zoomControl: false,
 		});
 
 		// Initialize the address search autocomplete.
 		const { Autocomplete } = await loader.importLibrary('places');
 		const autocomplete = new Autocomplete(autocompleteElement, {
-			fields: ['formatted_address', 'geometry', 'name']
+			fields: ['formatted_address', 'geometry', 'name'],
 		});
 		autocomplete.addListener('place_changed', async () => {
 			const place = autocomplete.getPlace();
@@ -85,7 +85,7 @@
 			<div class="flex flex-col rounded-md shadow-md">
 				{#if location}
 					<BuildingInsightsSection
-						bind:configId
+						bind:solarPanelConfig
 						bind:expandedSection
 						bind:buildingInsightsResponse
 						bind:showDataLayer
@@ -107,8 +107,17 @@
 						{map}
 					/>
 
-					<md-divider inset />
-					<Expandable icon="payments" title="Financial benefits" subtitle="" />
+					{#if solarPanelConfig}
+						<md-divider inset />
+						<FinancialBenefitsSection
+							bind:expandedSection
+							bind:solarPanelConfig
+							solarPanelConfigs={buildingInsightsResponse.solarPotential.solarPanelConfigs}
+							panelHeightMeters={buildingInsightsResponse.solarPotential.panelHeightMeters}
+							panelWidthMeters={buildingInsightsResponse.solarPotential.panelWidthMeters}
+							panelCapacityWatts={buildingInsightsResponse.solarPotential.panelCapacityWatts}
+						/>
+					{/if}
 				{/if}
 			</div>
 

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Table from './Table.svelte';
+
 	export let title: string = '';
 	export let icon: string = '';
 	export let rows: { name: string; value: any; units?: string; icon?: string }[] = [];
@@ -12,22 +14,9 @@
 	<div class="py-3 w-full">
 		<md-divider />
 	</div>
-	<table class="table-auto w-full body-medium secondary-text">
-		{#each rows as row}
-			<tr>
-				<td class="primary-text py-2">
-					<md-icon>{row.icon ?? ''}</md-icon>
-				</td>
-				<th class="pl-2 text-left">
-					{row.name}
-				</th>
-				<td class="pl-2 text-right">
-					<span>{row.value.toString()}</span>
-					<span class="body-small">{row.units ?? ''}</span>
-				</td>
-			</tr>
-		{/each}
-	</table>
+	<div class="w-full secondary-text">
+		<Table {rows} />
+	</div>
 	<div class="px-3">
 		<slot />
 	</div>

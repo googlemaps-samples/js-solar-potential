@@ -1,3 +1,4 @@
+import { binaryPalette, ironPalette, rainbowPalette, sunlightPalette } from "./colors";
 import { downloadGeoTIFF, type DataLayersResponse, type GeoTiff, type LayerId, type Bounds } from "./solar";
 import { renderPalette, renderRGB } from "./visualize";
 
@@ -14,25 +15,17 @@ export interface Layer {
   palette?: Palette;
 }
 
-const colorPalettes: Record<LayerId, string[]> = {
-  mask: ['212121', 'EEEEEE'],
-  dsm: ['3949AB', '81D4FA', '66BB6A', 'FFE082', 'E53935'],
-  rgb: [],
-  annualFlux: ['00000A', '91009C', 'E64616', 'FEB400', 'FFFFF6'],
-  monthlyFlux: ['00000A', '91009C', 'E64616', 'FEB400', 'FFFFF6'],
-  hourlyShade: ['212121', 'FFCA28']
-};
-
 export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googleMapsApiKey: string): Promise<Layer> {
   console.log(`Render layer: ${layerId}`);
   const get: Record<LayerId, () => Promise<Layer>> = {
     mask: async () => {
       const mask = await downloadGeoTIFF(urls.maskUrl, googleMapsApiKey);
+      const colors = binaryPalette
       return {
         id: layerId,
         bounds: mask.bounds,
         palette: {
-          colors: colorPalettes[layerId],
+          colors: colors,
           min: 'No roof',
           max: 'Roof'
         },
@@ -40,7 +33,7 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
           renderPalette({
             data: mask,
             mask: showRoofOnly ? mask : undefined,
-            colors: colorPalettes[layerId],
+            colors: colors
           })
         ]
       };
@@ -53,11 +46,12 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
       const sortedValues = Array.from(data.rasters[0]).sort((x, y) => x - y);
       const minValue = sortedValues[0];
       const maxValue = sortedValues.slice(-1)[0];
+      const colors = rainbowPalette
       return {
         id: layerId,
         bounds: mask.bounds,
         palette: {
-          colors: colorPalettes[layerId],
+          colors: colors,
           min: `${minValue.toFixed(1)} m`,
           max: `${maxValue.toFixed(1)} m`
         },
@@ -65,7 +59,7 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
           renderPalette({
             data: data,
             mask: showRoofOnly ? mask : undefined,
-            colors: colorPalettes[layerId],
+            colors: colors,
             min: sortedValues[0],
             max: sortedValues.slice(-1)[0],
           })
@@ -90,11 +84,12 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
         downloadGeoTIFF(urls.maskUrl, googleMapsApiKey),
         downloadGeoTIFF(urls.annualFluxUrl, googleMapsApiKey)
       ]);
+      const colors = ironPalette
       return {
         id: layerId,
         bounds: mask.bounds,
         palette: {
-          colors: colorPalettes[layerId],
+          colors: colors,
           min: 'Shady',
           max: 'Sunny'
         },
@@ -102,7 +97,7 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
           renderPalette({
             data: data,
             mask: showRoofOnly ? mask : undefined,
-            colors: colorPalettes[layerId],
+            colors: colors,
             min: 0,
             max: 1800,
           })
@@ -114,11 +109,12 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
         downloadGeoTIFF(urls.maskUrl, googleMapsApiKey),
         downloadGeoTIFF(urls.monthlyFluxUrl, googleMapsApiKey)
       ]);
+      const colors = ironPalette
       return {
         id: layerId,
         bounds: mask.bounds,
         palette: {
-          colors: colorPalettes[layerId],
+          colors: colors,
           min: 'Shady',
           max: 'Sunny'
         },
@@ -126,7 +122,7 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
           renderPalette({
             data: data,
             mask: showRoofOnly ? mask : undefined,
-            colors: colorPalettes[layerId],
+            colors: colors,
             min: 0,
             max: 200,
             index: month,
@@ -139,11 +135,12 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
         downloadGeoTIFF(urls.maskUrl, googleMapsApiKey),
         ...urls.hourlyShadeUrls.map(url => downloadGeoTIFF(url, googleMapsApiKey))
       ]);
+      const colors = sunlightPalette
       return {
         id: layerId,
         bounds: mask.bounds,
         palette: {
-          colors: colorPalettes[layerId],
+          colors: colors,
           min: 'Shade',
           max: 'Sun'
         },
@@ -156,7 +153,7 @@ export async function getLayer(layerId: LayerId, urls: DataLayersResponse, googl
               )
             },
             mask: showRoofOnly ? mask : undefined,
-            colors: colorPalettes[layerId],
+            colors: colors,
             min: 0,
             max: 1,
             index: hour,

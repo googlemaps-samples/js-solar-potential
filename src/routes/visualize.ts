@@ -38,12 +38,7 @@ export function renderPalette({ data, mask, colors, min, max, index }: {
 }) {
   const n = 256
   const palette = createPalette(colors ?? ['000000', 'ffffff'], n)
-  const indices = data.rasters[index ?? 0].map(x => normalize(x, {
-    xMin: min ?? 0,
-    xMax: max ?? 1,
-    yMin: 0,
-    yMax: n - 1,
-  })).map(Math.round)
+  const indices = data.rasters[index ?? 0].map(x => normalize(x, max ?? 1, min ?? 0)).map(x => Math.round(x * (n - 1)))
   return renderRGB(
     {
       ...data,
@@ -58,11 +53,7 @@ export function renderPalette({ data, mask, colors, min, max, index }: {
 }
 
 export function createPalette(hexColors: string[], size = 256) {
-  const rgb = hexColors.map(hex => ({
-    r: parseInt(hex.substring(0, 2), 16),
-    g: parseInt(hex.substring(2, 4), 16),
-    b: parseInt(hex.substring(4, 6), 16),
-  }))
+  const rgb = hexColors.map(colorToRGB)
   const step = (rgb.length - 1) / (size - 1)
   return Array(size).fill(0).map((_, i) => {
     const index = i * step
@@ -76,13 +67,26 @@ export function createPalette(hexColors: string[], size = 256) {
   })
 }
 
-export function normalize(x: number, args: { xMin?: number, xMax?: number, yMin?: number, yMax?: number }) {
-  const xMin = args.xMin ?? 0
-  const xMax = args.xMax ?? 1
-  const yMin = args.yMin ?? 0
-  const yMax = args.yMax ?? 1
-  const y = (x - xMin) / (xMax - xMin) * (yMax - yMin) + yMin
-  return clamp(y, yMin, yMax)
+export function colorToRGB(color: string): { r: number, g: number, b: number } {
+  const hex = color.startsWith('#') ? color.slice(1) : color
+  return {
+    r: parseInt(hex.substring(0, 2), 16),
+    g: parseInt(hex.substring(2, 4), 16),
+    b: parseInt(hex.substring(4, 6), 16),
+  }
+}
+
+export function rgbToColor({ r, g, b }: { r: number, g: number, b: number }): string {
+  const f = (x: number) => {
+    const hex = Math.round(x).toString(16)
+    return hex.length == 1 ? `0${hex}` : hex
+  }
+  return `#${f(r)}${f(g)}${f(b)}`
+}
+
+export function normalize(x: number, max: number = 1, min: number = 0) {
+  const y = (x - min) / (max - min)
+  return clamp(y, 0, 1)
 }
 
 export function lerp(x: number, y: number, t: number) {

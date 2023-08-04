@@ -10,19 +10,20 @@
 		type DataLayersResponse,
 		type LayerId,
 		type RequestError,
-		showDate
 	} from '../solar';
 	import Show from '../components/Show.svelte';
 	import { onMount } from 'svelte';
 	import SummaryCard from '../components/SummaryCard.svelte';
 
-	export let title = 'Data Layers';
 	export let expandedSection: string;
 	export let buildingInsightsResponse: BuildingInsightsResponse;
 	export let googleMapsApiKey: string;
 	export let showDataLayer = true;
 	export let spherical: typeof google.maps.geometry.spherical;
 	export let map: google.maps.Map;
+
+	const icon = 'layers';
+	const title = 'Data Layers';
 
 	const dataLayerOptions: Record<LayerId | 'none', string> = {
 		none: 'No layer',
@@ -31,7 +32,7 @@
 		rgb: 'Aerial image',
 		annualFlux: 'Annual sunshine',
 		monthlyFlux: 'Monthly sunshine',
-		hourlyShade: 'Hourly shade'
+		hourlyShade: 'Hourly shade',
 	};
 
 	const monthNames = [
@@ -46,11 +47,10 @@
 		'Sep',
 		'Oct',
 		'Nov',
-		'Dec'
+		'Dec',
 	];
 
 	let animationElement: HTMLElement;
-	let paletteElement: HTMLElement;
 
 	let dataLayersResponse: DataLayersResponse | RequestError | undefined;
 	let dataLayersDialog: MdDialog;
@@ -78,7 +78,7 @@
 			const sw = buildingInsightsResponse.boundingBox.sw;
 			const diameter = spherical.computeDistanceBetween(
 				new google.maps.LatLng(ne.latitude, ne.longitude),
-				new google.maps.LatLng(sw.latitude, sw.longitude)
+				new google.maps.LatLng(sw.latitude, sw.longitude),
 			);
 			const radius = Math.ceil(diameter / 2);
 			try {
@@ -110,7 +110,7 @@
 			layerId: layer.id,
 			showRoofOnly: showRoofOnly,
 			month: month,
-			day: day
+			day: day,
 		});
 		overlays = layer
 			.render(showRoofOnly, month, day)
@@ -139,7 +139,6 @@
 	$: showDataLayer, drawDataLayer();
 
 	onMount(() => {
-		map.controls[google.maps.ControlPosition.TOP_LEFT].push(paletteElement);
 		map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(animationElement);
 		drawDataLayer(true);
 	});
@@ -171,12 +170,7 @@
 		</Expandable>
 	</div>
 {:else}
-	<Expandable
-		bind:section={expandedSection}
-		icon="layers"
-		{title}
-		subtitle={dataLayerOptions[layerId]}
-	>
+	<Expandable bind:section={expandedSection} {icon} {title} subtitle={dataLayerOptions[layerId]}>
 		<div class="flex flex-col space-y-2 px-2">
 			<span class="outline-text label-medium">
 				<b>{title}</b> provides raw and processed imagery and granular details on an area surrounding
@@ -243,7 +237,7 @@
 				<md-dialog bind:this={dataLayersDialog}>
 					<span slot="headline">
 						<div class="flex items-center">
-							<md-icon>layers</md-icon>
+							<md-icon>{icon}</md-icon>
 							<b>&nbsp;{title}</b>
 						</div>
 					</span>
@@ -255,63 +249,63 @@
 	</Expandable>
 {/if}
 
-<div class="absolute">
-	<div bind:this={paletteElement} class="w-72">
-		{#if expandedSection == title && layer}
-			<div class="m-2">
-				<SummaryCard icon="layers" {title} rows={[{ name: dataLayerOptions[layerId], value: '' }]}>
-					<div class="flex flex-col space-y-4">
-						<p class="outline-text">
-							{#if layerId == 'mask'}
-								The building mask image: one bit per pixel saying whether that pixel is considered
-								to be part of a rooftop or not.
-							{:else if layerId == 'dsm'}
-								An image of the DSM (digital surface map) of the region. Values are in meters above
-								EGM96 geoid (i.e., sea level). Invalid locations (where we don't have data) are
-								stored as -9999.
-							{:else if layerId == 'rgb'}
-								An image of RGB data (aerial photo) of the region.
-							{:else if layerId == 'annualFlux'}
-								The annual flux map (annual sunlight on roofs) of the region. Values are
-								kWh/kW/year. This is unmasked flux: flux is computed for every location, not just
-								building rooftops. Invalid locations are stored as -9999: locations outside our
-								coverage area will be invalid, and a few locations inside the coverage area, where
-								we were unable to calculate flux, will also be invalid.
-							{:else if layerId == 'monthlyFlux'}
-								The monthly flux map (sunlight on roofs, broken down by month) of the region. Values
-								are kWh/kW/year. The GeoTIFF imagery file pointed to by this URL will contain twelve
-								bands, corresponding to January...December, in order.
-							{:else if layerId == 'hourlyShade'}
-								Twelve URLs for hourly shade, corresponding to January...December, in order. Each
-								GeoTIFF imagery file will contain 24 bands, corresponding to the 24 hours of the
-								day. Each pixel is a 32 bit integer, corresponding to the (up to) 31 days of that
-								month; a 1 bit means that the corresponding location is able to see the sun at that
-								day, of that hour, of that month. Invalid locations are stored as -9999 (since this
-								is negative, it has bit 31 set, and no valid value could have bit 31 set as that
-								would correspond to the 32nd day of the month).
-							{/if}
-						</p>
-
-						{#if layer.palette}
-							<div>
-								<div
-									class="h-2 outline rounded-sm"
-									style={`background: linear-gradient(to right, ${layer.palette.colors.map(
-										(hex) => '#' + hex
-									)})`}
-								/>
-								<div class="flex justify-between pt-1 label-small">
-									<span>{layer.palette.min}</span>
-									<span>{layer.palette.max}</span>
-								</div>
-							</div>
+<div class="absolute top-0 left-0 w-72">
+	{#if expandedSection == title && layer}
+		<div class="m-2">
+			<SummaryCard {icon} {title} rows={[{ name: dataLayerOptions[layerId], value: '' }]}>
+				<div class="flex flex-col space-y-4">
+					<p class="outline-text">
+						{#if layerId == 'mask'}
+							The building mask image: one bit per pixel saying whether that pixel is considered to
+							be part of a rooftop or not.
+						{:else if layerId == 'dsm'}
+							An image of the DSM (digital surface map) of the region. Values are in meters above
+							EGM96 geoid (i.e., sea level). Invalid locations (where we don't have data) are stored
+							as -9999.
+						{:else if layerId == 'rgb'}
+							An image of RGB data (aerial photo) of the region.
+						{:else if layerId == 'annualFlux'}
+							The annual flux map (annual sunlight on roofs) of the region. Values are kWh/kW/year.
+							This is unmasked flux: flux is computed for every location, not just building
+							rooftops. Invalid locations are stored as -9999: locations outside our coverage area
+							will be invalid, and a few locations inside the coverage area, where we were unable to
+							calculate flux, will also be invalid.
+						{:else if layerId == 'monthlyFlux'}
+							The monthly flux map (sunlight on roofs, broken down by month) of the region. Values
+							are kWh/kW/year. The GeoTIFF imagery file pointed to by this URL will contain twelve
+							bands, corresponding to January...December, in order.
+						{:else if layerId == 'hourlyShade'}
+							Twelve URLs for hourly shade, corresponding to January...December, in order. Each
+							GeoTIFF imagery file will contain 24 bands, corresponding to the 24 hours of the day.
+							Each pixel is a 32 bit integer, corresponding to the (up to) 31 days of that month; a
+							1 bit means that the corresponding location is able to see the sun at that day, of
+							that hour, of that month. Invalid locations are stored as -9999 (since this is
+							negative, it has bit 31 set, and no valid value could have bit 31 set as that would
+							correspond to the 32nd day of the month).
 						{/if}
-					</div>
-				</SummaryCard>
-			</div>
-		{/if}
-	</div>
+					</p>
 
+					{#if layer.palette}
+						<div>
+							<div
+								class="h-2 outline rounded-sm"
+								style={`background: linear-gradient(to right, ${layer.palette.colors.map(
+									(hex) => '#' + hex,
+								)})`}
+							/>
+							<div class="flex justify-between pt-1 label-small">
+								<span>{layer.palette.min}</span>
+								<span>{layer.palette.max}</span>
+							</div>
+						</div>
+					{/if}
+				</div>
+			</SummaryCard>
+		</div>
+	{/if}
+</div>
+
+<div class="absolute">
 	<div bind:this={animationElement} class="mb-5 p-2 lg:w-96 w-80">
 		{#if !layer}
 			<div />

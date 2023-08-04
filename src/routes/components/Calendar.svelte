@@ -20,7 +20,7 @@
 		September: 30,
 		October: 31,
 		November: 30,
-		December: 31
+		December: 31,
 	};
 
 	function dayFrom(row: number, col: number) {
