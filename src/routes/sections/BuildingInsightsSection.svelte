@@ -54,12 +54,10 @@
 
 		// Default to the midpoint solar configuration, around 50% capacity.
 		const solarPotential = buildingInsightsResponse.solarPotential;
-		const yearlyEnergy = (monthlyAverageEnergyBill / energyCostPerKWh) * 12;
-		// configId = Math.round(solarPotential.solarPanelConfigs.length / 2);
+		const yearlyKWhEnergyConsumption = (monthlyAverageEnergyBill / energyCostPerKWh) * 12;
 		configId = solarPotential.solarPanelConfigs.findIndex(
-			(config) => config.yearlyEnergyDcKwh * dcToAcDerate >= yearlyEnergy,
+			(config) => config.yearlyEnergyDcKwh * dcToAcDerate >= yearlyKWhEnergyConsumption,
 		);
-		console.log(configId);
 
 		// Create the solar panels on the map.
 		const palette = createPalette(panelsPalette, 256).map(rgbToColor);

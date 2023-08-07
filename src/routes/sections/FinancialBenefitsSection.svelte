@@ -11,7 +11,7 @@
 	export let configId: number;
 	export let monthlyAverageEnergyBill: number;
 	export let energyCostPerKWh: number;
-	export let dcToAcDerate;
+	export let dcToAcDerate: number;
 	export let solarPanelConfigs: SolarPanelConfig[];
 	export let panelCapacityWatts: number;
 
@@ -79,6 +79,10 @@
 
 	let energyCovered: number;
 	$: energyCovered = yearlyProductionAcKWh[0] / yearlyKWhEnergyConsumption;
+
+	$: configId = solarPanelConfigs.findIndex(
+		(config) => config.yearlyEnergyDcKwh * dcToAcDerate >= yearlyKWhEnergyConsumption,
+	);
 
 	let breakEvenYear: number = -1;
 	$: GoogleCharts.load(
@@ -153,7 +157,7 @@
 			label="Energy cost per KWh"
 			value={energyCostPerKWh}
 			prefix-text="$"
-			on:change={(event) => (monthlyKWhEnergyConsumption = Number(event.target.value))}
+			on:change={(event) => (energyCostPerKWh = Number(event.target.value))}
 		>
 			<md-icon slot="leadingicon">paid</md-icon>
 		</md-outlined-text-field>
