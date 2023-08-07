@@ -146,6 +146,7 @@
 			type="number"
 			label="Monthly average energy bill"
 			value={monthlyAverageEnergyBill.toFixed(2)}
+			min={0}
 			prefix-text="$"
 			on:change={(event) => (monthlyAverageEnergyBill = Number(event.target.value))}
 		>
@@ -156,6 +157,7 @@
 			type="number"
 			label="Energy cost per KWh"
 			value={energyCostPerKWh}
+			min={0}
 			prefix-text="$"
 			on:change={(event) => (energyCostPerKWh = Number(event.target.value))}
 		>
@@ -166,6 +168,7 @@
 			type="number"
 			label="Solar incentives"
 			value={solarIncentives.toFixed(2)}
+			min={0}
 			prefix-text="$"
 			on:change={(event) => (solarIncentives = Number(event.target.value))}
 		>
@@ -188,6 +191,7 @@
 			<md-slider
 				class="w-full"
 				value={configId ?? 0}
+				min={0}
 				max={solarPanelConfigs.length - 1}
 				on:change={(event) => (configId = event.target.value)}
 			/>
