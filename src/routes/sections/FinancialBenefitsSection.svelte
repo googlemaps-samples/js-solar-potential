@@ -144,7 +144,7 @@
 	<div class="flex flex-col space-y-4 pt-1">
 		<md-outlined-text-field
 			type="number"
-			label="Average monthly energy bill"
+			label="Monthly average energy bill"
 			value={monthlyAverageEnergyBill.toFixed(2)}
 			prefix-text="$"
 			on:change={(event) => (monthlyAverageEnergyBill = Number(event.target.value))}
@@ -164,12 +164,12 @@
 
 		<md-outlined-text-field
 			type="number"
-			label="Solar tax credit incentive"
+			label="Solar incentives"
 			value={solarIncentives.toFixed(2)}
 			prefix-text="$"
 			on:change={(event) => (solarIncentives = Number(event.target.value))}
 		>
-			<md-icon slot="leadingicon">savings</md-icon>
+			<md-icon slot="leadingicon">redeem</md-icon>
 		</md-outlined-text-field>
 
 		<md-divider inset />
