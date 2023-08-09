@@ -2,13 +2,13 @@
 	import { Loader } from '@googlemaps/js-api-loader';
 	import { onMount } from 'svelte';
 
-	import SearchBar from './components/SearchBar.svelte';
 	import BuildingInsightsSection from './sections/BuildingInsightsSection.svelte';
 	import DataLayersSection from './sections/DataLayersSection.svelte';
 	import type { BuildingInsightsResponse, RequestError } from './solar';
 	import FinancialBenefitsSection from './sections/FinancialBenefitsSection.svelte';
 	import AnimationBar from './components/AnimationBar.svelte';
 	import type { Layer } from './layer';
+	import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const locations = {
@@ -26,7 +26,7 @@
 
 	let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
 	let mapElement: HTMLElement;
-	let autocompleteElement: HTMLInputElement;
+	let autocompleteElement: MdFilledTextField;
 	let animationElement: HTMLElement;
 
 	let animationFrame: number;
@@ -68,7 +68,8 @@
 
 		// Initialize the address search autocomplete.
 		const { Autocomplete } = await loader.importLibrary('places');
-		const autocomplete = new Autocomplete(autocompleteElement, {
+		const inputElement = autocompleteElement.renderRoot.querySelector('.input') as HTMLInputElement;
+		const autocomplete = new Autocomplete(inputElement, {
 			fields: ['formatted_address', 'geometry', 'name'],
 		});
 		autocomplete.addListener('place_changed', async () => {
@@ -81,6 +82,9 @@
 			map.setZoom(zoom);
 
 			location = place.geometry.location;
+			if (place.formatted_address) {
+				autocompleteElement.value = place.formatted_address;
+			}
 		});
 	});
 </script>
@@ -93,7 +97,9 @@
 	<!-- Side bar -->
 	<aside class="flex-none md:w-96 w-80 p-2 pt-3 overflow-auto">
 		<div class="flex flex-col space-y-2 h-full">
-			<SearchBar bind:input={autocompleteElement} />
+			<md-filled-text-field bind:this={autocompleteElement} label="Search an address">
+				<md-icon slot="leadingicon">search</md-icon>
+			</md-filled-text-field>
 
 			<div class="flex flex-col rounded-md shadow-md">
 				{#if location}
