@@ -2,12 +2,15 @@
 	import type { Layer } from '../layer';
 
 	export let animationElement: HTMLElement;
-	export let animationFrame: number = 0;
-	export let overlays: google.maps.GroundOverlay[];
+	export let frame: number;
 	export let layer: Layer;
-	export let map: google.maps.Map;
 	export let month: number;
 	export let day: number;
+
+	let monthFrame = 0;
+	$: monthFrame = frame % 12;
+	let hourFrame = 0;
+	$: hourFrame = frame % 24;
 
 	const monthNames = [
 		'Jan',
@@ -37,21 +40,19 @@
 				min={0}
 				max={11}
 				range={true}
-				value-start={animationFrame}
-				value-end={animationFrame}
+				value-start={monthFrame}
+				value-end={monthFrame}
 				on:change={(event) => {
-					overlays[animationFrame].setMap(null);
-					if (event.target.valueStart != animationFrame) {
-						animationFrame = event.target.valueStart;
-						event.target.valueStart = animationFrame;
+					if (event.target.valueStart != frame) {
+						frame = event.target.valueStart;
+						event.target.valueStart = frame;
 					} else {
-						animationFrame = event.target.valueEnd;
-						event.target.valueEnd = animationFrame;
+						frame = event.target.valueEnd;
+						event.target.valueEnd = frame;
 					}
-					overlays[animationFrame].setMap(map);
 				}}
 			/>
-			<span class="w-8">{monthNames[animationFrame]}</span>
+			<span class="w-8">{monthNames[frame % 12]}</span>
 		</div>
 	{:else if layer.id == 'hourlyShade'}
 		<div
@@ -62,35 +63,33 @@
 				min={0}
 				max={23}
 				range={true}
-				value-start={animationFrame}
-				value-end={animationFrame}
+				value-start={hourFrame}
+				value-end={hourFrame}
 				on:change={(event) => {
-					overlays[animationFrame].setMap(null);
-					if (event.target.valueStart != animationFrame) {
-						animationFrame = event.target.valueStart;
-						event.target.valueStart = animationFrame;
+					if (event.target.valueStart != frame) {
+						frame = event.target.valueStart;
+						event.target.valueStart = frame;
 					} else {
-						animationFrame = event.target.valueEnd;
-						event.target.valueEnd = animationFrame;
+						frame = event.target.valueEnd;
+						event.target.valueEnd = frame;
 					}
-					overlays[animationFrame].setMap(map);
 				}}
 			/>
 			<span class="w-24 whitespace-nowrap">
 				{monthNames[month]}
 				{day},
-				{#if animationFrame == 0}
+				{#if hourFrame == 0}
 					12am
-				{:else if animationFrame < 10}
-					{animationFrame}am
-				{:else if animationFrame < 12}
-					{animationFrame}am
-				{:else if animationFrame == 12}
+				{:else if hourFrame < 10}
+					{hourFrame}am
+				{:else if hourFrame < 12}
+					{hourFrame}am
+				{:else if hourFrame == 12}
 					12pm
-				{:else if animationFrame < 22}
-					{animationFrame - 12}pm
+				{:else if hourFrame < 22}
+					{hourFrame - 12}pm
 				{:else}
-					{animationFrame - 12}pm
+					{hourFrame - 12}pm
 				{/if}
 			</span>
 		</div>

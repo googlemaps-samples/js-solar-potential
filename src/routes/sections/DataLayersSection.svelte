@@ -12,11 +12,11 @@
 		type RequestError,
 	} from '../solar';
 	import Show from '../components/Show.svelte';
-	import { onMount } from 'svelte';
 	import SummaryCard from '../components/SummaryCard.svelte';
+	import { onMount } from 'svelte';
 
 	export let expandedSection: string;
-	export let animationFrame = 0;
+	export let frame: number;
 	export let overlays: google.maps.GroundOverlay[] = [];
 	export let layer: Layer | null = null;
 	export let month = 3;
@@ -45,15 +45,18 @@
 	let layerId: LayerId | 'none' = 'monthlyFlux';
 
 	let showRoofOnly = false;
-	let animation: NodeJS.Timer | undefined;
-	async function drawDataLayer(reset = false) {
-		clearInterval(animation);
+	let playAnimation = true;
+	async function drawDataLayer(layerId: LayerId | 'none', reset = false) {
 		if (reset) {
 			showRoofOnly = ['annualFlux', 'monthlyFlux', 'hourlyShade'].includes(layerId);
 			map.setMapTypeId(layerId == 'rgb' ? 'roadmap' : 'satellite');
 			overlays.map((overlay) => overlay.setMap(null));
 			layer = null;
-			animationFrame = layerId == 'hourlyShade' ? 5 : 0;
+			frame = layerId == 'hourlyShade' ? 5 : 0;
+			playAnimation = ['monthlyFlux', 'hourlyShade'].includes(layerId);
+		}
+		if (layerId == 'none') {
+			return;
 		}
 
 		if (!layer) {
@@ -72,10 +75,6 @@
 				return;
 			}
 
-			if (layerId == 'none') {
-				return;
-			}
-
 			try {
 				layer = await getLayer(layerId, dataLayersResponse, googleMapsApiKey);
 			} catch (e) {
@@ -85,7 +84,6 @@
 		}
 
 		const bounds = layer.bounds;
-		overlays.map((overlay) => overlay.setMap(null));
 		if (!showDataLayer) {
 			return;
 		}
@@ -96,34 +94,28 @@
 			month: month,
 			day: day,
 		});
+		overlays.map((overlay) => overlay.setMap(null));
 		overlays = layer
 			.render(showRoofOnly, month, day)
 			.map((canvas) => new google.maps.GroundOverlay(canvas.toDataURL(), bounds));
 
-		if (layer.id == 'monthlyFlux') {
-			playAnimation();
-		} else if (layer.id == 'hourlyShade') {
-			playAnimation();
-		} else {
+		if (!['monthlyFlux', 'hourlyShade'].includes(layer.id)) {
 			overlays[0].setMap(map);
 		}
 	}
 
-	function playAnimation() {
-		clearInterval(animation);
-		overlays[animationFrame].setMap(map);
-		animation = setInterval(() => {
-			overlays[animationFrame].setMap(null);
-			animationFrame = (animationFrame + 1) % overlays.length;
-			overlays[animationFrame].setMap(map);
-		}, 1000);
+	$: if (layer && playAnimation) {
+		if (layer.id == 'monthlyFlux') {
+			overlays.map((overlay, i) => overlay.setMap(i == frame % 12 ? map : null));
+		} else if (layer.id == 'hourlyShade') {
+			overlays.map((overlay, i) => overlay.setMap(i == frame % 24 ? map : null));
+		}
 	}
 
-	$: showDataLayer, drawDataLayer();
+	let stopFrame = 0;
+	$: frame, (frame = playAnimation ? frame : stopFrame);
 
-	onMount(() => {
-		drawDataLayer(true);
-	});
+	onMount(() => drawDataLayer(layerId, true));
 </script>
 
 {#if !dataLayersResponse}
@@ -142,7 +134,7 @@
 					role={undefined}
 					on:click={() => {
 						dataLayersResponse = undefined;
-						drawDataLayer();
+						drawDataLayer(layerId);
 					}}
 				>
 					Retry
@@ -162,9 +154,7 @@
 			<Dropdown
 				bind:value={layerId}
 				options={dataLayerOptions}
-				onChange={(layerId) => {
-					drawDataLayer(true);
-				}}
+				onChange={() => drawDataLayer(layerId, true)}
 			/>
 
 			{#if dataLayersResponse}
@@ -176,7 +166,7 @@
 					</div>
 				{:else}
 					{#if layerId == 'hourlyShade'}
-						<Calendar bind:month bind:day onChange={() => drawDataLayer()} />
+						<Calendar bind:month bind:day onChange={() => drawDataLayer(layerId)} />
 					{/if}
 
 					<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
@@ -186,7 +176,7 @@
 							selected={showRoofOnly}
 							on:click={(event) => {
 								showRoofOnly = event.target.selected;
-								drawDataLayer();
+								drawDataLayer(layerId);
 							}}
 						/>
 						<span class="ml-3 body-large">Show roof only</span>
@@ -197,11 +187,13 @@
 							<md-switch
 								id="mask"
 								role={undefined}
-								selected={!!animation}
+								selected={playAnimation}
 								on:click={(event) => {
-									clearInterval(animation);
-									if (event.target.selected) {
-										playAnimation();
+									playAnimation = event.target.selected;
+									if (playAnimation) {
+										frame++;
+									} else {
+										stopFrame = frame;
 									}
 								}}
 							/>

@@ -11,11 +11,11 @@
 	import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-	const locations = {
-		Home: '921 W San Gabriel Ave, Fresno, CA 93705',
+	const places: Record<string, string> = {
+		'Mountain View Library': '585 Franklin St, Mountain View, CA 94041, USA',
 	};
 	let location: google.maps.LatLng | undefined;
-	const zoom = 20;
+	const zoom = 19;
 
 	let expandedSection: string = '';
 	let showDataLayer = true;
@@ -29,7 +29,7 @@
 	let autocompleteElement: MdFilledTextField;
 	let animationElement: HTMLElement;
 
-	let animationFrame: number;
+	let frame = 0;
 	let overlays: google.maps.GroundOverlay[];
 	let layer: Layer;
 	let month: number;
@@ -45,7 +45,7 @@
 		// Get the address information for the default location.
 		await loader.importLibrary('core');
 		const geocoder = new google.maps.Geocoder();
-		const geocoderResponse = await geocoder.geocode({ address: locations.Home });
+		const geocoderResponse = await geocoder.geocode({ address: places[Object.keys(places)[0]] });
 
 		// Load the spherical geometry to calculate distances.
 		({ spherical } = await loader.importLibrary('geometry'));
@@ -86,6 +86,10 @@
 				autocompleteElement.value = place.formatted_address;
 			}
 		});
+
+		setInterval(() => {
+			frame++;
+		}, 1000);
 	});
 </script>
 
@@ -122,7 +126,7 @@
 					<md-divider inset />
 					<DataLayersSection
 						bind:expandedSection
-						bind:animationFrame
+						bind:frame
 						bind:overlays
 						bind:layer
 						bind:month
@@ -164,5 +168,5 @@
 </div>
 
 <div class="absolute">
-	<AnimationBar bind:animationElement bind:animationFrame {overlays} {layer} {map} {month} {day} />
+	<AnimationBar bind:animationElement bind:frame {layer} {month} {day} />
 </div>
