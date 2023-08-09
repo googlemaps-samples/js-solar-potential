@@ -39,7 +39,7 @@
 		solarPanelConfig = buildingInsightsResponse.solarPotential.solarPanelConfigs[configId];
 	}
 
-	export async function showSolarPotential() {
+	export async function showSolarPotential(location: google.maps.LatLng) {
 		console.log('showSolarPotential');
 		buildingInsightsResponse = undefined;
 		solarPanels.map((panel) => panel.setMap(null));
@@ -96,9 +96,7 @@
 		panel.setMap(showPanels && i < (solarPanelConfig?.panelsCount ?? 0) ? map : null),
 	);
 
-	onMount(() => {
-		showSolarPotential();
-	});
+	$: showSolarPotential(location);
 </script>
 
 {#if !buildingInsightsResponse}
@@ -117,7 +115,11 @@
 				<p class="title-large">ERROR {buildingInsightsResponse.error.code}</p>
 				<p class="body-medium">{buildingInsightsResponse.error.status}</p>
 				<p class="label-medium">{buildingInsightsResponse.error.message}</p>
-				<md-filled-button class="pt-6" role={undefined} on:click={() => showSolarPotential()}>
+				<md-filled-button
+					class="pt-6"
+					role={undefined}
+					on:click={() => showSolarPotential(location)}
+				>
 					Retry
 					<md-icon slot="icon">refresh</md-icon>
 				</md-filled-button>

@@ -7,6 +7,8 @@
 	import DataLayersSection from './sections/DataLayersSection.svelte';
 	import type { BuildingInsightsResponse, RequestError } from './solar';
 	import FinancialBenefitsSection from './sections/FinancialBenefitsSection.svelte';
+	import AnimationBar from './components/AnimationBar.svelte';
+	import type { Layer } from './layer';
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const locations = {
@@ -25,6 +27,13 @@
 	let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
 	let mapElement: HTMLElement;
 	let autocompleteElement: HTMLInputElement;
+	let animationElement: HTMLElement;
+
+	let animationFrame: number;
+	let overlays: google.maps.GroundOverlay[];
+	let layer: Layer;
+	let month: number;
+	let day: number;
 
 	// Initialize app.
 	let map: google.maps.Map;
@@ -55,6 +64,7 @@
 			streetViewControl: false,
 			zoomControl: false,
 		});
+		map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(animationElement);
 
 		// Initialize the address search autocomplete.
 		const { Autocomplete } = await loader.importLibrary('places');
@@ -106,6 +116,11 @@
 					<md-divider inset />
 					<DataLayersSection
 						bind:expandedSection
+						bind:animationFrame
+						bind:overlays
+						bind:layer
+						bind:month
+						bind:day
 						{buildingInsightsResponse}
 						{googleMapsApiKey}
 						{showDataLayer}
@@ -131,7 +146,7 @@
 			<div class="flex flex-col items-center w-full">
 				<md-text-button href="https://github.com/davidcavazos/solar-potential" target="_blank">
 					View code on GitHub
-					<img slot="icon" src="github-mark.svg" alt="GitHub" />
+					<img slot="icon" src="github-mark.svg" alt="GitHub" width="16" height="16" />
 				</md-text-button>
 			</div>
 
@@ -140,4 +155,8 @@
 			</span>
 		</div>
 	</aside>
+</div>
+
+<div class="absolute">
+	<AnimationBar bind:animationElement bind:animationFrame {overlays} {layer} {map} {month} {day} />
 </div>
