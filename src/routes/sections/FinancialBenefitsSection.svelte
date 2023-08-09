@@ -156,7 +156,7 @@
 		<md-outlined-text-field
 			type="number"
 			label="Energy cost per KWh"
-			value={energyCostPerKWh}
+			value={energyCostPerKWh.toFixed(2)}
 			min={0}
 			prefix-text="$"
 			on:change={(event) => (energyCostPerKWh = Number(event.target.value))}
