@@ -12,7 +12,7 @@
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const places: Record<string, string> = {
-		'Mountain View Library': '585 Franklin St, Mountain View, CA 94041, USA',
+		'Mountain View Library': 'Mountain View Public Library',
 	};
 	let location: google.maps.LatLng | undefined;
 	const zoom = 19;
@@ -45,14 +45,17 @@
 		// Get the address information for the default location.
 		await loader.importLibrary('core');
 		const geocoder = new google.maps.Geocoder();
-		const geocoderResponse = await geocoder.geocode({ address: places[Object.keys(places)[0]] });
+		const address = places[Object.keys(places)[0]];
+		const geocoderResponse = await geocoder.geocode({ address: address });
+		const geocoderResult = geocoderResponse.results[0];
+		autocompleteElement.value = address;
 
 		// Load the spherical geometry to calculate distances.
 		({ spherical } = await loader.importLibrary('geometry'));
 
 		// Initialize the map at the desired location.
 		const { Map } = await loader.importLibrary('maps');
-		location = geocoderResponse.results[0].geometry.location;
+		location = geocoderResult.geometry.location;
 		map = new Map(mapElement, {
 			center: location,
 			zoom: zoom,
@@ -66,6 +69,15 @@
 		});
 		map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(animationElement);
 
+		if (geocoderResult.geometry.viewport) {
+			// map.fitBounds(geocoderResult.geometry.viewport);
+			map.setCenter(geocoderResult.geometry.location);
+			map.setZoom(zoom);
+		} else {
+			map.setCenter(geocoderResult.geometry.location);
+			map.setZoom(zoom);
+		}
+
 		// Initialize the address search autocomplete.
 		const { Autocomplete } = await loader.importLibrary('places');
 		const inputElement = autocompleteElement.renderRoot.querySelector('.input') as HTMLInputElement;
@@ -78,11 +90,19 @@
 				autocompleteElement.value = '';
 				return;
 			}
-			map.setCenter(place.geometry.location);
-			map.setZoom(zoom);
+			if (place.geometry.viewport) {
+				// map.fitBounds(place.geometry.viewport);
+				map.setCenter(place.geometry.location);
+				map.setZoom(zoom);
+			} else {
+				map.setCenter(place.geometry.location);
+				map.setZoom(zoom);
+			}
 
 			location = place.geometry.location;
-			if (place.formatted_address) {
+			if (place.name) {
+				autocompleteElement.value = place.name;
+			} else if (place.formatted_address) {
 				autocompleteElement.value = place.formatted_address;
 			}
 		});
