@@ -8,7 +8,6 @@
 		type SolarPanelConfig,
 	} from '../solar';
 	import Show from '../components/Show.svelte';
-	import { onMount } from 'svelte';
 	import SummaryCard from '../components/SummaryCard.svelte';
 	import { createPalette, normalize, rgbToColor } from '../visualize';
 	import { panelsPalette } from '../colors';

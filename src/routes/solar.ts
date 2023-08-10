@@ -129,8 +129,8 @@ export interface RequestError {
   }
 }
 
-export function showLatLng(point: LatLng, precision = 5) {
-  return `(${point.latitude.toFixed(precision)}, ${point.longitude.toFixed(precision)})`
+export function showLatLng(point: LatLng) {
+  return `(${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)})`
 }
 
 export function showDate(date: Date) {
@@ -139,32 +139,33 @@ export function showDate(date: Date) {
 
 // https://developers.devsite.corp.google.com/maps/documentation/solar/requests#make-building
 export async function findClosestBuilding(location: google.maps.LatLng, apiKey: string): Promise<BuildingInsightsResponse> {
-  console.log(`GET buildingInsights ${JSON.stringify(location)}`)
-  const params = new URLSearchParams({
-    "key": apiKey,
-    "location.latitude": location.lat().toString(),
-    "location.longitude": location.lng().toString(),
-  })
-  return fetch(`https://solar.googleapis.com/v1/buildingInsights:findClosest?${params}`, { cache: "force-cache" })
+  const args = {
+    "location.latitude": location.lat().toFixed(5),
+    "location.longitude": location.lng().toFixed(5),
+  }
+  console.log('GET buildingInsights\n', args)
+  const params = new URLSearchParams({ ...args, "key": apiKey })
+  return fetch(`https://solar.googleapis.com/v1/buildingInsights:findClosest?${params}`)
     .then(async response => {
       const content = await response.json()
       if (response.status != 200) {
         console.error("findClosestBuilding\n", content)
         throw content
       }
+      console.log('buildingInsightsResponse', content)
       return content
     })
 }
 
 // https://developers.devsite.corp.google.com/maps/documentation/solar/requests#make-data
 export async function getDataLayerUrls(location: LatLng, radius_meters: number, apiKey: string): Promise<DataLayersResponse> {
-  console.log(`GET dataLayers ${JSON.stringify(location)} ${radius_meters}`)
-  const params = new URLSearchParams({
-    "key": apiKey,
-    "location.latitude": location.latitude.toString(),
-    "location.longitude": location.longitude.toString(),
+  const args = {
+    "location.latitude": location.latitude.toFixed(5),
+    "location.longitude": location.longitude.toFixed(5),
     "radius_meters": radius_meters.toString(),
-  })
+  }
+  console.log('GET dataLayers\n', args)
+  const params = new URLSearchParams({ ...args, "key": apiKey })
   return fetch(`https://solar.googleapis.com/v1/dataLayers:get?${params}`)
     .then(async response => {
       const content = await response.json()
@@ -172,17 +173,18 @@ export async function getDataLayerUrls(location: LatLng, radius_meters: number, 
         console.error("getDataLayerUrls\n", content)
         throw content
       }
+      console.log('dataLayersResponse', content)
       return content
     })
 }
 
-export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoTiff> {
-  console.log(`Download ${url}`)
+export async function downloadGeoTIFF(layerId: LayerId, url: string, apiKey: string): Promise<GeoTiff> {
+  console.log(`Fetching ${layerId}, url: ${url}`)
   const solarUrl = url.includes('solar.googleapis.com') ? url + `&key=${apiKey}` : url
-  const response = await fetch(solarUrl, { cache: "force-cache" })
+  const response = await fetch(solarUrl)
   if (response.status != 200) {
     const error = await response.json()
-    console.error(`downloadGeoTIFF\n`, error)
+    console.error(`downloadGeoTIFF ${layerId}, url: ${url}\n`, error)
     throw error
   }
   const arrayBuffer = await response.arrayBuffer()
