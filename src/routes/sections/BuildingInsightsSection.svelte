@@ -34,13 +34,13 @@
 
 	let solarPanels: google.maps.Polygon[] = [];
 
+	let panelCapacityRatio = 1.0;
 	let solarPanelConfig: SolarPanelConfig | undefined;
 	$: if (buildingInsightsResponse && !('error' in buildingInsightsResponse)) {
 		solarPanelConfig = buildingInsightsResponse.solarPotential.solarPanelConfigs[configId];
+		panelCapacityRatio =
+			panelCapacityWatts / buildingInsightsResponse.solarPotential.panelCapacityWatts;
 	}
-
-	let yearlyEnergyDcKwh = 0;
-	// $: yearlyEnergyDcKwh =
 
 	export async function showSolarPotential(location: google.maps.LatLng) {
 		console.log('showSolarPotential');
@@ -59,13 +59,15 @@
 		const solarPotential = buildingInsightsResponse.solarPotential;
 		const yearlyKWhEnergyConsumption = (monthlyAverageEnergyBill / energyCostPerKWh) * 12;
 		configId = solarPotential.solarPanelConfigs.findIndex(
-			(config) => config.yearlyEnergyDcKwh * dcToAcDerate >= yearlyKWhEnergyConsumption,
+			(config) =>
+				config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyKWhEnergyConsumption,
 		);
 
 		// Create the solar panels on the map.
 		const palette = createPalette(panelsPalette, 256).map(rgbToColor);
-		const minEnergy = solarPotential.solarPanels.slice(-1)[0].yearlyEnergyDcKwh;
-		const maxEnergy = solarPotential.solarPanels[0].yearlyEnergyDcKwh;
+		const minEnergy =
+			solarPotential.solarPanels.slice(-1)[0].yearlyEnergyDcKwh * panelCapacityRatio;
+		const maxEnergy = solarPotential.solarPanels[0].yearlyEnergyDcKwh * panelCapacityRatio;
 		solarPanels = solarPotential.solarPanels.map((panel) => {
 			const [w, h] = [solarPotential.panelWidthMeters / 2, solarPotential.panelHeightMeters / 2];
 			const points = [
@@ -77,7 +79,9 @@
 			];
 			const orientation = panel.orientation == 'PORTRAIT' ? 90 : 0;
 			const azimuth = solarPotential.roofSegmentStats[panel.segmentIndex].azimuthDegrees;
-			const colorIndex = Math.round(normalize(panel.yearlyEnergyDcKwh, maxEnergy, minEnergy) * 255);
+			const colorIndex = Math.round(
+				normalize(panel.yearlyEnergyDcKwh * panelCapacityRatio, maxEnergy, minEnergy) * 255,
+			);
 			return new google.maps.Polygon({
 				paths: points.map(({ x, y }) =>
 					spherical.computeOffset(
@@ -138,29 +142,45 @@
 		bind:section={expandedSection}
 		{icon}
 		{title}
-		subtitle={`Yearly energy: ${(solarPanelConfig.yearlyEnergyDcKwh / 1000).toFixed(2)} MWh`}
+		subtitle={`Yearly energy: ${(
+			(solarPanelConfig.yearlyEnergyDcKwh * panelCapacityRatio) /
+			1000
+		).toFixed(2)} MWh`}
 	>
 		<div class="flex flex-col space-y-2 px-2">
 			<span class="outline-text label-medium">
 				<b>{title}</b> provides data on the location, dimensions & solar potential of a building.
 			</span>
 
-			<table class="table-auto w-full body-medium secondary-text">
-				<tr>
-					<td class="primary-text"><md-icon>solar_power</md-icon> </td>
-					<th class="pl-2 text-left">Panels count</th>
-					<td class="pl-2 text-right">
-						<span>{solarPanelConfig.panelsCount} panels</span>
-					</td>
-				</tr>
-			</table>
+			<div>
+				<table class="table-auto w-full body-medium secondary-text">
+					<tr>
+						<td class="primary-text"><md-icon>solar_power</md-icon> </td>
+						<th class="pl-2 text-left">Panels count</th>
+						<td class="pl-2 text-right">
+							<span>{solarPanelConfig.panelsCount} panels</span>
+						</td>
+					</tr>
+				</table>
 
-			<md-slider
-				class="w-full"
-				value={configId}
-				max={buildingInsightsResponse.solarPotential.solarPanelConfigs.length - 1}
-				on:change={(event) => (configId = event.target.value)}
-			/>
+				<md-slider
+					class="w-full"
+					value={configId}
+					max={buildingInsightsResponse.solarPotential.solarPanelConfigs.length - 1}
+					on:change={(event) => (configId = event.target.value)}
+				/>
+			</div>
+
+			<md-outlined-text-field
+				type="number"
+				label="Panel capacity"
+				value={panelCapacityWatts.toString()}
+				min={0}
+				suffix-text="Watts"
+				on:change={(event) => (panelCapacityWatts = Number(event.target.value))}
+			>
+				<md-icon slot="leadingicon">bolt</md-icon>
+			</md-outlined-text-field>
 
 			<button
 				class="p-2 relative inline-flex items-center"
@@ -241,6 +261,7 @@
 						<div class="relative" style="width: 72px; height: 72px">
 							<md-circular-progress
 								value={solarPanelConfig?.panelsCount}
+								min={0}
 								max={solarPanels.length}
 								style="--md-circular-progress-size: 72px;"
 							/>
@@ -260,9 +281,10 @@
 						<p class="p-2 body-large">Yearly energy</p>
 						<div class="relative" style="width: 72px; height: 72px">
 							<md-circular-progress
-								value={solarPanelConfig?.yearlyEnergyDcKwh}
+								value={(solarPanelConfig?.yearlyEnergyDcKwh ?? 0) * panelCapacityRatio}
+								min={0}
 								max={buildingInsightsResponse.solarPotential.solarPanelConfigs.slice(-1)[0]
-									.yearlyEnergyDcKwh}
+									.yearlyEnergyDcKwh * panelCapacityRatio}
 								style="--md-circular-progress-size: 72px;"
 							/>
 							<md-standard-icon-button class="absolute inset-0 m-auto">
@@ -271,7 +293,7 @@
 						</div>
 						<p class="p-2 body-medium">
 							<span class="primary-text">
-								<b>{showNumber(solarPanelConfig?.yearlyEnergyDcKwh ?? 0)}</b>
+								<b>{showNumber((solarPanelConfig?.yearlyEnergyDcKwh ?? 0) * panelCapacityRatio)}</b>
 							</span>
 							<span>KWh</span>
 						</p>

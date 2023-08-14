@@ -14,9 +14,13 @@
 	export let dcToAcDerate: number;
 	export let solarPanelConfigs: SolarPanelConfig[];
 	export let panelCapacityWatts: number;
+	export let defaultPanelCapacityWatts: number;
 
 	const icon = 'payments';
 	const title = 'Solar Potential analysis';
+
+	let panelCapacityRatio = 1.0;
+	$: panelCapacityRatio = panelCapacityWatts / defaultPanelCapacityWatts;
 
 	let costChart: HTMLElement;
 	let showAdvancedSettings = false;
@@ -31,7 +35,8 @@
 	$: yearlyKWhEnergyConsumption = monthlyKWhEnergyConsumption * 12;
 
 	let initialAcKWhPerYear: number;
-	$: initialAcKWhPerYear = solarPanelConfigs[configId].yearlyEnergyDcKwh * dcToAcDerate;
+	$: initialAcKWhPerYear =
+		solarPanelConfigs[configId].yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate;
 
 	let installationLifeSpan = 20;
 	let efficiencyDepreciationFactor = 0.995;
@@ -39,9 +44,6 @@
 	$: yearlyProductionAcKWh = [...Array(installationLifeSpan).keys()].map(
 		(year) => initialAcKWhPerYear * efficiencyDepreciationFactor ** year,
 	);
-
-	let lifetimeProductionAcKWh: number;
-	$: lifetimeProductionAcKWh = yearlyProductionAcKWh.reduce((x, y) => x + y, 0);
 
 	let costIncreaseFactor = 1.022;
 	let discountRate = 1.04;
@@ -81,7 +83,8 @@
 	$: energyCovered = yearlyProductionAcKWh[0] / yearlyKWhEnergyConsumption;
 
 	$: configId = solarPanelConfigs.findIndex(
-		(config) => config.yearlyEnergyDcKwh * dcToAcDerate >= yearlyKWhEnergyConsumption,
+		(config) =>
+			config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyKWhEnergyConsumption,
 	);
 
 	let breakEvenYear: number = -1;
@@ -145,6 +148,7 @@
 	{title}
 	subtitle="Values are only placeholders."
 	subtitle2="Update with your own values."
+	secondary
 >
 	<div class="flex flex-col space-y-4 pt-1">
 		<md-outlined-text-field
@@ -222,8 +226,6 @@
 		>
 			<md-icon slot="leadingicon">bolt</md-icon>
 		</md-outlined-text-field>
-
-		<md-divider inset />
 
 		<div class="flex flex-col items-center w-full">
 			<md-text-button
@@ -326,7 +328,7 @@
 					{
 						icon: 'energy_savings_leaf',
 						name: 'Yearly energy',
-						value: showNumber(solarPanelConfigs[configId].yearlyEnergyDcKwh),
+						value: showNumber(solarPanelConfigs[configId].yearlyEnergyDcKwh * panelCapacityRatio),
 						units: 'KWh',
 					},
 					{

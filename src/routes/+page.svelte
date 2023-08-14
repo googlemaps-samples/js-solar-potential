@@ -188,6 +188,7 @@
 						bind:energyCostPerKWh
 						bind:dcToAcDerate
 						solarPanelConfigs={buildingInsightsResponse.solarPotential.solarPanelConfigs}
+						defaultPanelCapacityWatts={buildingInsightsResponse.solarPotential.panelCapacityWatts}
 					/>
 				{/if}
 			</div>
