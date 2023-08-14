@@ -5,20 +5,22 @@
 	import BuildingInsightsSection from './sections/BuildingInsightsSection.svelte';
 	import DataLayersSection from './sections/DataLayersSection.svelte';
 	import type { BuildingInsightsResponse, RequestError } from './solar';
-	import FinancialBenefitsSection from './sections/FinancialBenefitsSection.svelte';
+	import SolarPotentialSection from './sections/SolarPotentialSection.svelte';
 	import AnimationBar from './components/AnimationBar.svelte';
 	import type { Layer } from './layer';
 	import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-	const places: Record<string, string> = {
-		'Mountain View Library': 'Mountain View Public Library',
+	const defaultPlace = {
+		name: 'Sonoma Valley Regional Library',
+		address: '755 W Napa St, Sonoma, CA 95476',
 	};
 	let location: google.maps.LatLng | undefined;
 	const zoom = 19;
 
 	let expandedSection: string = '';
 	let showDataLayer = true;
+	let panelCapacityWatts = 250;
 	let monthlyAverageEnergyBill = 300;
 	let energyCostPerKWh = 0.31;
 	let dcToAcDerate = 0.85;
@@ -45,10 +47,9 @@
 		// Get the address information for the default location.
 		await loader.importLibrary('core');
 		const geocoder = new google.maps.Geocoder();
-		const address = places[Object.keys(places)[0]];
-		const geocoderResponse = await geocoder.geocode({ address: address });
+		const geocoderResponse = await geocoder.geocode({ address: defaultPlace.address });
 		const geocoderResult = geocoderResponse.results[0];
-		autocompleteElement.value = address;
+		autocompleteElement.value = defaultPlace.name;
 
 		// Load the spherical geometry to calculate distances.
 		({ spherical } = await loader.importLibrary('geometry'));
@@ -125,6 +126,25 @@
 				<md-icon slot="leadingicon">search</md-icon>
 			</md-filled-text-field>
 
+			<div class="p-4 surface-variant outline-text rounded-lg space-y-3">
+				<p>
+					<a
+						class="primary-text"
+						href="https://developers.google.com/maps/documentation/solar/overview?hl=en"
+						target="_blank"
+					>
+						Two distinct endpoints of the <b>Solar API</b>
+						<md-icon class="text-sm">open_in_new</md-icon>
+					</a>
+					offer many benefits to solar marketplace websites, solar installers, and solar SaaS designers.
+				</p>
+
+				<p>
+					<b>Click on an area below</b>
+					to see what type of information the Solar API can provide.
+				</p>
+			</div>
+
 			<div class="flex flex-col rounded-md shadow-md">
 				{#if location}
 					<BuildingInsightsSection
@@ -132,6 +152,7 @@
 						bind:expandedSection
 						bind:buildingInsightsResponse
 						bind:showDataLayer
+						bind:panelCapacityWatts
 						{monthlyAverageEnergyBill}
 						{energyCostPerKWh}
 						{dcToAcDerate}
@@ -159,14 +180,14 @@
 					/>
 
 					<md-divider inset />
-					<FinancialBenefitsSection
+					<SolarPotentialSection
 						bind:expandedSection
 						bind:configId
+						bind:panelCapacityWatts
 						bind:monthlyAverageEnergyBill
 						bind:energyCostPerKWh
 						bind:dcToAcDerate
 						solarPanelConfigs={buildingInsightsResponse.solarPotential.solarPanelConfigs}
-						panelCapacityWatts={buildingInsightsResponse.solarPotential.panelCapacityWatts}
 					/>
 				{/if}
 			</div>

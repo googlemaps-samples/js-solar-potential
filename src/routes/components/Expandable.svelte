@@ -3,6 +3,7 @@
 
 	export let title: string;
 	export let subtitle = '';
+	export let subtitle2 = '';
 	export let icon = '';
 	export let section = '';
 
@@ -12,12 +13,12 @@
 </script>
 
 <button class="flex flex-row w-full p-4" on:click={toggle}>
-	<md-icon class="primary-text w-8">{icon}</md-icon>
-	<div class="grid justify-items-start">
+	<md-icon class="primary-text w-12">{icon}</md-icon>
+	<div class="w-full grid justify-items-start text-left">
 		<p class="body-large primary-text"><b>{title}</b></p>
 		<p class="label-medium outline-text">{subtitle}</p>
+		<p class="label-medium outline-text">{subtitle2}</p>
 	</div>
-	<div class="grow" />
 	<md-standard-icon-button>
 		<md-icon>{section == title ? 'expand_less' : 'expand_more'}</md-icon>
 	</md-standard-icon-button>

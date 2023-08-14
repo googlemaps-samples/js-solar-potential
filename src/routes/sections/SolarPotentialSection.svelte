@@ -16,7 +16,7 @@
 	export let panelCapacityWatts: number;
 
 	const icon = 'payments';
-	const title = 'Financial Benefits';
+	const title = 'Solar Potential analysis';
 
 	let costChart: HTMLElement;
 	let showAdvancedSettings = false;
@@ -66,7 +66,7 @@
 	);
 	$: costOfElectricityWithoutSolar = yearlyCostWithoutSolar.reduce((x, y) => x + y, 0);
 
-	let installationCostPerWatt: number = 4.5;
+	let installationCostPerWatt: number = 4.0;
 	let installationCost: number;
 	$: installationCost = installationCostPerWatt * installationSizeKWh * 1000;
 
@@ -127,6 +127,10 @@
 		{ packages: ['line'] },
 	);
 
+	function showNumber(x: number) {
+		return x.toLocaleString(undefined, { maximumFractionDigits: 1 });
+	}
+
 	function showMoney(amount: number) {
 		return `$${amount.toLocaleString(undefined, {
 			minimumFractionDigits: 2,
@@ -139,7 +143,8 @@
 	bind:section={expandedSection}
 	{icon}
 	{title}
-	subtitle={`Savings: ${showMoney(savings)} in ${installationLifeSpan} years`}
+	subtitle="Values are only placeholders."
+	subtitle2="Update with your own values."
 >
 	<div class="flex flex-col space-y-4 pt-1">
 		<md-outlined-text-field
@@ -152,6 +157,27 @@
 		>
 			<md-icon slot="leadingicon">credit_card</md-icon>
 		</md-outlined-text-field>
+
+		<div>
+			<table class="table-auto w-full body-medium secondary-text">
+				<tr>
+					<td class="primary-text"><md-icon>solar_power</md-icon> </td>
+					<th class="pl-2 text-left">Panels count</th>
+					<td class="pl-2 text-right">
+						<span>{solarPanelConfigs[configId].panelsCount} panels</span>
+					</td>
+				</tr>
+			</table>
+			<div>
+				<md-slider
+					class="w-full"
+					value={configId ?? 0}
+					min={0}
+					max={solarPanelConfigs.length - 1}
+					on:change={(event) => (configId = event.target.value)}
+				/>
+			</div>
+		</div>
 
 		<md-outlined-text-field
 			type="number"
@@ -175,27 +201,16 @@
 			<md-icon slot="leadingicon">redeem</md-icon>
 		</md-outlined-text-field>
 
-		<md-divider inset />
-
-		<div>
-			<table class="table-auto w-full body-medium secondary-text">
-				<tr>
-					<td class="primary-text"><md-icon>solar_power</md-icon> </td>
-					<th class="pl-2 text-left">Panels count</th>
-					<td class="pl-2 text-right">
-						<span>{solarPanelConfigs[configId].panelsCount} panels</span>
-					</td>
-				</tr>
-			</table>
-
-			<md-slider
-				class="w-full"
-				value={configId ?? 0}
-				min={0}
-				max={solarPanelConfigs.length - 1}
-				on:change={(event) => (configId = event.target.value)}
-			/>
-		</div>
+		<md-outlined-text-field
+			type="number"
+			label="Installation cost per Watt"
+			value={installationCostPerWatt.toFixed(2)}
+			min={0}
+			prefix-text="$"
+			on:change={(event) => (installationCostPerWatt = Number(event.target.value))}
+		>
+			<md-icon slot="leadingicon">request_quote</md-icon>
+		</md-outlined-text-field>
 
 		<md-outlined-text-field
 			type="number"
@@ -206,17 +221,6 @@
 			on:change={(event) => (panelCapacityWatts = Number(event.target.value))}
 		>
 			<md-icon slot="leadingicon">bolt</md-icon>
-		</md-outlined-text-field>
-
-		<md-outlined-text-field
-			type="number"
-			label="Installation cost per Watt"
-			value={installationCostPerWatt.toFixed(2)}
-			min={0}
-			prefix-text="$"
-			on:change={(event) => (installationCostPerWatt = Number(event.target.value))}
-		>
-			<md-icon slot="leadingicon">request_quote</md-icon>
 		</md-outlined-text-field>
 
 		<md-divider inset />
@@ -320,15 +324,15 @@
 				{title}
 				rows={[
 					{
-						icon: 'solar_power',
-						name: 'Panels count',
-						value: solarPanelConfigs[configId].panelsCount,
-						units: 'panels',
+						icon: 'energy_savings_leaf',
+						name: 'Yearly energy',
+						value: showNumber(solarPanelConfigs[configId].yearlyEnergyDcKwh),
+						units: 'KWh',
 					},
 					{
 						icon: 'speed',
 						name: 'Installation size',
-						value: installationSizeKWh,
+						value: showNumber(installationSizeKWh),
 						units: 'KWh',
 					},
 					{

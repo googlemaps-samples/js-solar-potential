@@ -15,6 +15,7 @@
 	export let configId: number;
 	export let expandedSection: string;
 	export let showDataLayer = true;
+	export let panelCapacityWatts: number;
 	export let monthlyAverageEnergyBill: number;
 	export let energyCostPerKWh: number;
 	export let dcToAcDerate: number;
@@ -25,7 +26,7 @@
 	export let map: google.maps.Map;
 
 	const icon = 'home';
-	const title = 'Building Insights';
+	const title = 'Building Insights endpoint';
 
 	let buildingInsightsDialog: MdDialog;
 
@@ -37,6 +38,9 @@
 	$: if (buildingInsightsResponse && !('error' in buildingInsightsResponse)) {
 		solarPanelConfig = buildingInsightsResponse.solarPotential.solarPanelConfigs[configId];
 	}
+
+	let yearlyEnergyDcKwh = 0;
+	// $: yearlyEnergyDcKwh =
 
 	export async function showSolarPotential(location: google.maps.LatLng) {
 		console.log('showSolarPotential');
@@ -96,6 +100,10 @@
 	);
 
 	$: showSolarPotential(location);
+
+	function showNumber(x: number) {
+		return x.toLocaleString(undefined, { maximumFractionDigits: 1 });
+	}
 </script>
 
 {#if !buildingInsightsResponse}
@@ -202,25 +210,25 @@
 					{
 						icon: 'wb_sunny',
 						name: 'Annual sunshine',
-						value: buildingInsightsResponse.solarPotential.maxSunshineHoursPerYear.toFixed(1),
+						value: showNumber(buildingInsightsResponse.solarPotential.maxSunshineHoursPerYear),
 						units: 'hr',
 					},
 					{
 						icon: 'square_foot',
 						name: 'Roof area',
-						value: buildingInsightsResponse.solarPotential.wholeRoofStats.areaMeters2.toFixed(1),
+						value: showNumber(buildingInsightsResponse.solarPotential.wholeRoofStats.areaMeters2),
 						units: 'm²',
 					},
 					{
 						icon: 'solar_power',
 						name: 'Max panel count',
-						value: buildingInsightsResponse.solarPotential.solarPanels.length,
+						value: showNumber(buildingInsightsResponse.solarPotential.solarPanels.length),
 						units: 'panels',
 					},
 					{
 						icon: 'co2',
 						name: 'CO₂ savings',
-						value: buildingInsightsResponse.solarPotential.carbonOffsetFactorKgPerMwh.toFixed(1),
+						value: showNumber(buildingInsightsResponse.solarPotential.carbonOffsetFactorKgPerMwh),
 						units: 'Kg/MWh',
 					},
 				]}
@@ -242,9 +250,9 @@
 						</div>
 						<p class="p-2 body-medium">
 							<span class="primary-text">
-								<b>{solarPanelConfig?.panelsCount}</b>
+								<b>{showNumber(solarPanelConfig?.panelsCount ?? 0)}</b>
 							</span>
-							<span>/ {solarPanels.length}</span>
+							<span>/ {showNumber(solarPanels.length)}</span>
 						</p>
 					</div>
 
@@ -263,7 +271,7 @@
 						</div>
 						<p class="p-2 body-medium">
 							<span class="primary-text">
-								<b>{solarPanelConfig?.yearlyEnergyDcKwh.toFixed(1)}</b>
+								<b>{showNumber(solarPanelConfig?.yearlyEnergyDcKwh ?? 0)}</b>
 							</span>
 							<span>KWh</span>
 						</p>
