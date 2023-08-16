@@ -1,3 +1,5 @@
 .svelte-kit/
 build/
 node_modules/
+tests/
+test-results/
