@@ -33,7 +33,7 @@
 	const dataLayerOptions: Record<LayerId | 'none', string> = {
 		none: 'No layer',
 		mask: 'Roof mask',
-		dsm: 'Digital Elevation Map',
+		dsm: 'Digital Surface Model',
 		rgb: 'Aerial image',
 		annualFlux: 'Annual sunshine',
 		monthlyFlux: 'Monthly sunshine',
