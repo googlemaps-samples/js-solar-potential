@@ -57,6 +57,8 @@ One option to deploy your app is with [Cloud Run](https://cloud.google.com/run).
 It's easy to use and allows us to build and deploy scalable containerized apps written in any language on a fully managed platform.
 
 For some languages like Node.js, it infers the configuration and can [deploy from source directly](https://cloud.google.com/run/docs/deploying-source-code), without any additional configurations!
+This uploads your source, builds it with [Cloud Build](https://cloud.google.com/build), deploys it to Cloud Run, and starts the service with `npm run start`.
+All with a single command.
 
 ```sh
 # Choose the Cloud location to deploy the app.
@@ -69,10 +71,13 @@ gcloud run deploy "solar-potential" \
   --allow-unauthenticated
 ```
 
-
 ## Checking your code
 
+You can use `npm run check` to do type checking and check for other common issues.
+You can also use `npm run check:watch` to continuously check your code when you save your changes.
 
+To check for styling and formatting issues, you can use `npm run lint`.
+To fix any lint issues, use `npm run format` to automatically format all the code base.
 
 ## Tech stack
 
