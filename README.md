@@ -1,6 +1,14 @@
-# create-svelte
+# ☀️ Solar Potential demo
 
 > _This is not an officially supported Google product._
+
+## Tech stack
+
+* [SvelteKit](https://kit.svelte.dev): Compiler framework to develop reactive web apps in a declarative style.
+* [Vite](https://vitejs.dev): Build tool with a fast development experience for modern web projects.
+* [Material Desgin 3](https://m3.material.io): Material Design 3 [web components](https://github.com/material-components/material-web#readme).
+* [Tailwind](https://tailwindcss.com): CSS framework for design and styling.
+* [TypeScript](https://www.typescriptlang.org): Provides type checking and type inference for JavaScript.
 
 Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
 
