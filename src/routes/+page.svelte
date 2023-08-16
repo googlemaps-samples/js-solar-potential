@@ -15,6 +15,8 @@
  -->
 
 <script lang="ts">
+	/* global google */
+
 	import { Loader } from '@googlemaps/js-api-loader';
 	import { onMount } from 'svelte';
 
@@ -25,6 +27,7 @@
 	import AnimationBar from './components/AnimationBar.svelte';
 	import type { Layer } from './layer';
 	import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
+	import Show from './components/Show.svelte';
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const defaultPlace = {
@@ -36,10 +39,9 @@
 
 	let expandedSection: string = '';
 	let showPanels = true;
-	let showDataLayer = true;
 	let panelCapacityWatts = 250;
 	let monthlyAverageEnergyBill = 300;
-	let energyCostPerKWh = 0.31;
+	let energyCostPerKwh = 0.31;
 	let dcToAcDerate = 0.85;
 	let configId = 0;
 
@@ -169,10 +171,9 @@
 						bind:expandedSection
 						bind:buildingInsightsResponse
 						bind:showPanels
-						bind:showDataLayer
 						bind:panelCapacityWatts
 						{monthlyAverageEnergyBill}
-						{energyCostPerKWh}
+						{energyCostPerKwh}
 						{dcToAcDerate}
 						{googleMapsApiKey}
 						{location}
@@ -191,7 +192,6 @@
 						bind:month
 						bind:day
 						bind:showPanels
-						bind:showDataLayer
 						{buildingInsightsResponse}
 						{googleMapsApiKey}
 						{spherical}
@@ -202,9 +202,9 @@
 					<SolarPotentialSection
 						bind:expandedSection
 						bind:configId
-						bind:panelCapacityWatts
 						bind:monthlyAverageEnergyBill
-						bind:energyCostPerKWh
+						bind:energyCostPerKwh
+						bind:panelCapacityWatts
 						bind:dcToAcDerate
 						solarPanelConfigs={buildingInsightsResponse.solarPotential.solarPanelConfigs}
 						defaultPanelCapacityWatts={buildingInsightsResponse.solarPotential.panelCapacityWatts}

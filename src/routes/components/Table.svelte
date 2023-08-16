@@ -15,7 +15,7 @@
  -->
 
 <script lang="ts">
-	export let rows: { name: string; value: any; units?: string; icon?: string }[] = [];
+	export let rows: { name: string; value: string; units?: string; icon?: string }[] = [];
 </script>
 
 <table class="table-auto w-full body-medium">

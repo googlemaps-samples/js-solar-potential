@@ -15,6 +15,7 @@
  -->
 
 <script lang="ts">
+	/* eslint-disable @typescript-eslint/no-explicit-any */
 	export let key: any = undefined;
 	export let value: any;
 	export let maxLength = 40;

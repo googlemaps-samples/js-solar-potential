@@ -19,7 +19,7 @@
 
 	export let title: string = '';
 	export let icon: string = '';
-	export let rows: { name: string; value: any; units?: string; icon?: string }[] = [];
+	export let rows: { name: string; value: string; units?: string; icon?: string }[] = [];
 </script>
 
 <div class="grid justify-items-start surface on-surface-text p-4 rounded-lg shadow-lg">

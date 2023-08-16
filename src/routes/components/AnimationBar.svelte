@@ -15,6 +15,7 @@
  -->
 
 <script lang="ts">
+	import type { MdSlider } from '@material/web/slider/slider';
 	import type { Layer } from '../layer';
 
 	export let animationElement: HTMLElement;
@@ -42,6 +43,17 @@
 		'Nov',
 		'Dec',
 	];
+
+	function onChangeAnimationSlider(event: Event) {
+		const target = event.target as MdSlider;
+		if (target.valueStart != frame) {
+			frame = target.valueStart ?? 0;
+			target.valueStart = frame;
+		} else {
+			frame = target.valueEnd ?? 0;
+			target.valueEnd = frame;
+		}
+	}
 </script>
 
 <div bind:this={animationElement} class="mb-5 p-2 lg:w-96 w-80">
@@ -58,15 +70,7 @@
 				range={true}
 				value-start={monthFrame}
 				value-end={monthFrame}
-				on:change={(event) => {
-					if (event.target.valueStart != frame) {
-						frame = event.target.valueStart;
-						event.target.valueStart = frame;
-					} else {
-						frame = event.target.valueEnd;
-						event.target.valueEnd = frame;
-					}
-				}}
+				on:change={onChangeAnimationSlider}
 			/>
 			<span class="w-8">{monthNames[frame % 12]}</span>
 		</div>
@@ -81,15 +85,7 @@
 				range={true}
 				value-start={hourFrame}
 				value-end={hourFrame}
-				on:change={(event) => {
-					if (event.target.valueStart != frame) {
-						frame = event.target.valueStart;
-						event.target.valueStart = frame;
-					} else {
-						frame = event.target.valueEnd;
-						event.target.valueEnd = frame;
-					}
-				}}
+				on:change={onChangeAnimationSlider}
 			/>
 			<span class="w-24 whitespace-nowrap">
 				{monthNames[month]}

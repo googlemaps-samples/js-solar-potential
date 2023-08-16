@@ -68,9 +68,14 @@
 		>
 			<div class="px-4 pb-4">
 				<Dropdown
-					bind:value={month}
-					options={Object.keys(months)}
-					onChange={() => onChange(month, day)}
+					value={month.toString()}
+					options={Object.fromEntries(
+						Object.keys(month).map((month) => [month, months[month].toString()]),
+					)}
+					onChange={(value) => {
+						month = Number(value);
+						onChange(month, day);
+					}}
 				/>
 			</div>
 

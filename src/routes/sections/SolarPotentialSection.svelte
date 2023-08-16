@@ -15,59 +15,167 @@
  -->
 
 <script lang="ts">
+	/* global google */
+
 	import { slide } from 'svelte/transition';
-	import { GoogleCharts } from 'google-charts';
 
 	import Expandable from '../components/Expandable.svelte';
 	import SummaryCard from '../components/SummaryCard.svelte';
 	import type { SolarPanelConfig } from '../solar';
 	import Table from '../components/Table.svelte';
+	import type { MdOutlinedTextField } from '@material/web/textfield/outlined-text-field';
+	import type { MdSlider } from '@material/web/slider/slider';
+
+	/* eslint-disable @typescript-eslint/ban-ts-comment */
+	// @ts-ignore
+	import { GoogleCharts } from 'google-charts';
 
 	export let expandedSection: string;
 	export let configId: number;
 	export let monthlyAverageEnergyBill: number;
-	export let energyCostPerKWh: number;
+	export let energyCostPerKwh: number;
+	export let panelCapacityWatts: number;
 	export let dcToAcDerate: number;
 	export let solarPanelConfigs: SolarPanelConfig[];
-	export let panelCapacityWatts: number;
 	export let defaultPanelCapacityWatts: number;
 
 	const icon = 'payments';
 	const title = 'Solar Potential analysis';
 
+	// Basic settings
+	const monthlyAverageEnergyBillUI = {
+		show: () => monthlyAverageEnergyBill.toFixed(2),
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			monthlyAverageEnergyBill = Number(target.value);
+		},
+	};
+
 	let panelCapacityRatio = 1.0;
 	$: panelCapacityRatio = panelCapacityWatts / defaultPanelCapacityWatts;
+	$: configId = solarPanelConfigs.findIndex(
+		(config) =>
+			config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyKWhEnergyConsumption,
+	);
+	$: console.log(panelCapacityRatio * dcToAcDerate);
+	function configIdOnChange(event: Event) {
+		const target = event.target as MdSlider;
+		configId = target.value ?? 0;
+	}
+
+	const energyCostPerKwhUI = {
+		show: () => energyCostPerKwh.toFixed(2),
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			energyCostPerKwh = Number(target.value);
+		},
+	};
+
+	let solarIncentives: number = 7000;
+	const solarIncentivesUI = {
+		show: () => solarIncentives.toFixed(2),
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			solarIncentives = Number(target.value);
+		},
+	};
+
+	let installationCostPerWatt: number = 4.0;
+	const installationCostPerWattUI = {
+		show: () => installationCostPerWatt.toFixed(2),
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			installationCostPerWatt = Number(target.value);
+		},
+	};
+
+	const panelCapacityWattsUI = {
+		show: () => panelCapacityWatts.toString(),
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			panelCapacityWatts = Number(target.value);
+		},
+	};
+
+	let installationLifeSpan = 20;
+	const installationLifeSpanUI = {
+		show: () => installationLifeSpan.toString(),
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			installationLifeSpan = Number(target.value);
+		},
+	};
+
+	// Advanced settings
+	const dcToAcDerateUI = {
+		show: () => dcToAcDerate * 100,
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			dcToAcDerate = Number(target.value) / 100;
+		},
+	};
+
+	let efficiencyDepreciationFactor = 0.995;
+	const efficiencyDepreciationFactorUI = {
+		show: () => ((1 - efficiencyDepreciationFactor) * 100).toFixed(1),
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			efficiencyDepreciationFactor = 1 - Number(target.value) / 100;
+		},
+	};
+
+	let costIncreaseFactor = 1.022;
+	const costIncreaseFactorUI = {
+		show: () => ((costIncreaseFactor - 1) * 100).toFixed(1),
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			costIncreaseFactor = Number(target.value) / 100 + 1;
+		},
+	};
+
+	let discountRate = 1.04;
+	const discountRateUI = {
+		show: () => ((discountRate - 1) * 100).toFixed(1),
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			discountRate = Number(target.value) / 100 + 1;
+		},
+	};
+
+	// Calculations
+	let installationCostTotal: number;
+	$: installationCostTotal = installationCostPerWatt * installationSizeKWh * 1000;
 
 	let costChart: HTMLElement;
 	let showAdvancedSettings = false;
 
 	let installationSizeKWh: number;
-	$: installationSizeKWh = (solarPanelConfigs[configId].panelsCount * panelCapacityWatts) / 1000;
+	$: if (solarPanelConfigs[configId]) {
+		installationSizeKWh = (solarPanelConfigs[configId].panelsCount * panelCapacityWatts) / 1000;
+	}
 
 	let monthlyKWhEnergyConsumption: number;
-	$: monthlyKWhEnergyConsumption = monthlyAverageEnergyBill / energyCostPerKWh;
+	$: monthlyKWhEnergyConsumption = monthlyAverageEnergyBill / energyCostPerKwh;
 
 	let yearlyKWhEnergyConsumption: number;
 	$: yearlyKWhEnergyConsumption = monthlyKWhEnergyConsumption * 12;
 
 	let initialAcKWhPerYear: number;
-	$: initialAcKWhPerYear =
-		solarPanelConfigs[configId].yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate;
+	$: if (solarPanelConfigs[configId]) {
+		initialAcKWhPerYear =
+			solarPanelConfigs[configId].yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate;
+	}
 
-	let installationLifeSpan = 20;
-	let efficiencyDepreciationFactor = 0.995;
 	let yearlyProductionAcKWh: number[];
 	$: yearlyProductionAcKWh = [...Array(installationLifeSpan).keys()].map(
 		(year) => initialAcKWhPerYear * efficiencyDepreciationFactor ** year,
 	);
 
-	let costIncreaseFactor = 1.022;
-	let discountRate = 1.04;
 	let yearlyUtilityBillEstimates: number[];
 	$: yearlyUtilityBillEstimates = yearlyProductionAcKWh.map((yearlyKWhEnergyProduced, year) =>
 		Math.max(
 			((yearlyKWhEnergyConsumption - yearlyKWhEnergyProduced) *
-				energyCostPerKWh *
+				energyCostPerKwh *
 				costIncreaseFactor ** year) /
 				discountRate ** year,
 			0,
@@ -84,24 +192,14 @@
 	);
 	$: costOfElectricityWithoutSolar = yearlyCostWithoutSolar.reduce((x, y) => x + y, 0);
 
-	let installationCostPerWatt: number = 4.0;
-	let installationCost: number;
-	$: installationCost = installationCostPerWatt * installationSizeKWh * 1000;
-
-	let solarIncentives: number = 7000;
 	let totalCostWithSolar: number;
-	$: totalCostWithSolar = installationCost + remainingLifetimeUtilityBill - solarIncentives;
+	$: totalCostWithSolar = installationCostTotal + remainingLifetimeUtilityBill - solarIncentives;
 
 	let savings: number;
 	$: savings = costOfElectricityWithoutSolar - totalCostWithSolar;
 
 	let energyCovered: number;
 	$: energyCovered = yearlyProductionAcKWh[0] / yearlyKWhEnergyConsumption;
-
-	$: configId = solarPanelConfigs.findIndex(
-		(config) =>
-			config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyKWhEnergyConsumption,
-	);
 
 	let breakEvenYear: number = -1;
 	$: GoogleCharts.load(
@@ -115,7 +213,7 @@
 			const cumulativeCostsWithSolar = yearlyUtilityBillEstimates.map(
 				(billEstimate, i) =>
 					(costWithSolar +=
-						i == 0 ? billEstimate + installationCost - solarIncentives : billEstimate),
+						i == 0 ? billEstimate + installationCostTotal - solarIncentives : billEstimate),
 			);
 			let costWithoutSolar = 0;
 			const cumulativeCostsWithoutSolar = yearlyCostWithoutSolar.map(
@@ -135,8 +233,10 @@
 				]),
 			]);
 
-			const chart = new google.charts.Line(costChart);
-			const options = google.charts.Line.convertOptions({
+			/* eslint-disable @typescript-eslint/no-explicit-any */
+			const googleCharts = google.charts as any;
+			const chart = new googleCharts.Line(costChart);
+			const options = googleCharts.Line.convertOptions({
 				title: `Cost analysis for ${installationLifeSpan} years`,
 				width: 350,
 				height: 200,
@@ -170,10 +270,10 @@
 		<md-outlined-text-field
 			type="number"
 			label="Monthly average energy bill"
-			value={monthlyAverageEnergyBill.toFixed(2)}
+			value={monthlyAverageEnergyBillUI.show()}
 			min={0}
 			prefix-text="$"
-			on:change={(event) => (monthlyAverageEnergyBill = Number(event.target.value))}
+			on:change={monthlyAverageEnergyBillUI.onChange}
 		>
 			<md-icon slot="leadingicon">credit_card</md-icon>
 		</md-outlined-text-field>
@@ -184,17 +284,17 @@
 					<td class="primary-text"><md-icon>solar_power</md-icon> </td>
 					<th class="pl-2 text-left">Panels count</th>
 					<td class="pl-2 text-right">
-						<span>{solarPanelConfigs[configId].panelsCount} panels</span>
+						<span>{solarPanelConfigs[configId]?.panelsCount} panels</span>
 					</td>
 				</tr>
 			</table>
 			<div>
 				<md-slider
 					class="w-full"
-					value={configId ?? 0}
+					value={configId}
 					min={0}
 					max={solarPanelConfigs.length - 1}
-					on:change={(event) => (configId = event.target.value)}
+					on:change={configIdOnChange}
 				/>
 			</div>
 		</div>
@@ -202,10 +302,10 @@
 		<md-outlined-text-field
 			type="number"
 			label="Energy cost per KWh"
-			value={energyCostPerKWh.toFixed(2)}
+			value={energyCostPerKwhUI.show()}
 			min={0}
 			prefix-text="$"
-			on:change={(event) => (energyCostPerKWh = Number(event.target.value))}
+			on:change={energyCostPerKwhUI.onChange}
 		>
 			<md-icon slot="leadingicon">paid</md-icon>
 		</md-outlined-text-field>
@@ -213,10 +313,10 @@
 		<md-outlined-text-field
 			type="number"
 			label="Solar incentives"
-			value={solarIncentives.toFixed(2)}
+			value={solarIncentivesUI.show()}
 			min={0}
 			prefix-text="$"
-			on:change={(event) => (solarIncentives = Number(event.target.value))}
+			on:change={solarIncentivesUI.onChange}
 		>
 			<md-icon slot="leadingicon">redeem</md-icon>
 		</md-outlined-text-field>
@@ -224,10 +324,10 @@
 		<md-outlined-text-field
 			type="number"
 			label="Installation cost per Watt"
-			value={installationCostPerWatt.toFixed(2)}
+			value={installationCostPerWattUI.show()}
 			min={0}
 			prefix-text="$"
-			on:change={(event) => (installationCostPerWatt = Number(event.target.value))}
+			on:change={installationCostPerWattUI.onChange}
 		>
 			<md-icon slot="leadingicon">request_quote</md-icon>
 		</md-outlined-text-field>
@@ -235,10 +335,10 @@
 		<md-outlined-text-field
 			type="number"
 			label="Panel capacity"
-			value={panelCapacityWatts.toString()}
+			value={panelCapacityWattsUI.show()}
 			min={0}
 			suffix-text="Watts"
-			on:change={(event) => (panelCapacityWatts = Number(event.target.value))}
+			on:change={panelCapacityWattsUI.onChange}
 		>
 			<md-icon slot="leadingicon">bolt</md-icon>
 		</md-outlined-text-field>
@@ -261,10 +361,10 @@
 				<md-outlined-text-field
 					type="number"
 					label="Installation lifespan"
-					value={installationLifeSpan.toString()}
+					value={installationLifeSpanUI.show()}
 					min={0}
 					suffix-text="years"
-					on:change={(event) => (installationLifeSpan = Number(event.target.value))}
+					on:change={installationLifeSpanUI.onChange}
 				>
 					<md-icon slot="leadingicon">date_range</md-icon>
 				</md-outlined-text-field>
@@ -272,11 +372,11 @@
 				<md-outlined-text-field
 					type="number"
 					label="DC to AC conversion efficiency"
-					value={dcToAcDerate * 100}
+					value={dcToAcDerateUI.show()}
 					min={0}
 					max={100}
 					suffix-text="%"
-					on:change={(event) => (dcToAcDerate = Number(event.target.value / 100))}
+					on:change={dcToAcDerateUI.onChange}
 				>
 					<md-icon slot="leadingicon">dynamic_form</md-icon>
 				</md-outlined-text-field>
@@ -284,12 +384,11 @@
 				<md-outlined-text-field
 					type="number"
 					label="Panel efficiency decline per year"
-					value={((1 - efficiencyDepreciationFactor) * 100).toFixed(1)}
+					value={efficiencyDepreciationFactorUI.show()}
 					min={0}
 					max={100}
 					suffix-text="%"
-					on:change={(event) =>
-						(efficiencyDepreciationFactor = 1 - Number(event.target.value / 100))}
+					on:change={efficiencyDepreciationFactorUI.onChange}
 				>
 					<md-icon slot="leadingicon">trending_down</md-icon>
 				</md-outlined-text-field>
@@ -297,11 +396,11 @@
 				<md-outlined-text-field
 					type="number"
 					label="Energy cost increase per year"
-					value={((costIncreaseFactor - 1) * 100).toFixed(1)}
+					value={costIncreaseFactorUI.show()}
 					min={0}
 					max={100}
 					suffix-text="%"
-					on:change={(event) => (costIncreaseFactor = Number(event.target.value / 100) + 1)}
+					on:change={costIncreaseFactorUI.onChange}
 				>
 					<md-icon slot="leadingicon">price_change</md-icon>
 				</md-outlined-text-field>
@@ -309,11 +408,11 @@
 				<md-outlined-text-field
 					type="number"
 					label="Energy discount increase per year"
-					value={((discountRate - 1) * 100).toFixed(1)}
+					value={discountRateUI.show()}
 					min={0}
 					max={100}
 					suffix-text="%"
-					on:change={(event) => (discountRate = Number(event.target.value / 100) + 1)}
+					on:change={discountRateUI.onChange}
 				>
 					<md-icon slot="leadingicon">local_offer</md-icon>
 				</md-outlined-text-field>
@@ -344,7 +443,9 @@
 					{
 						icon: 'energy_savings_leaf',
 						name: 'Yearly energy',
-						value: showNumber(solarPanelConfigs[configId].yearlyEnergyDcKwh * panelCapacityRatio),
+						value: showNumber(
+							(solarPanelConfigs[configId]?.yearlyEnergyDcKwh ?? 0) * panelCapacityRatio,
+						),
 						units: 'KWh',
 					},
 					{
@@ -356,7 +457,7 @@
 					{
 						icon: 'request_quote',
 						name: 'Installation cost',
-						value: showMoney(installationCost),
+						value: showMoney(installationCostTotal),
 					},
 					{
 						icon: [
@@ -368,7 +469,7 @@
 							'battery_charging_full',
 						][Math.floor(Math.min(energyCovered, 1) * 5)],
 						name: 'Energy covered',
-						value: Math.round(energyCovered * 100),
+						value: Math.round(energyCovered * 100).toString(),
 						units: '%',
 					},
 				]}
@@ -398,7 +499,7 @@
 						{
 							icon: 'balance',
 							name: 'Break even',
-							value: breakEvenYear >= 0 ? breakEvenYear : '--',
+							value: breakEvenYear >= 0 ? breakEvenYear.toString() : '--',
 							units: 'years',
 						},
 					]}

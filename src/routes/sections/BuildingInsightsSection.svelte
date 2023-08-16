@@ -15,6 +15,8 @@
  -->
 
 <script lang="ts">
+	/* global google */
+
 	import type { MdDialog } from '@material/web/dialog/dialog';
 	import Expandable from '../components/Expandable.svelte';
 	import {
@@ -27,14 +29,15 @@
 	import SummaryCard from '../components/SummaryCard.svelte';
 	import { createPalette, normalize, rgbToColor } from '../visualize';
 	import { panelsPalette } from '../colors';
+	import type { MdSlider } from '@material/web/slider/slider';
+	import type { MdOutlinedTextField } from '@material/web/textfield/outlined-text-field';
 
 	export let configId: number;
 	export let expandedSection: string;
 	export let showPanels = true;
-	export let showDataLayer = true;
 	export let panelCapacityWatts: number;
 	export let monthlyAverageEnergyBill: number;
-	export let energyCostPerKWh: number;
+	export let energyCostPerKwh: number;
 	export let dcToAcDerate: number;
 	export let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
 	export let googleMapsApiKey: string;
@@ -45,7 +48,7 @@
 	const icon = 'home';
 	const title = 'Building Insights endpoint';
 
-	let buildingInsightsDialog: MdDialog;
+	let moreDetailsDialog: MdDialog;
 
 	let solarPanels: google.maps.Polygon[] = [];
 
@@ -72,7 +75,7 @@
 
 		// Default to the midpoint solar configuration, around 50% capacity.
 		const solarPotential = buildingInsightsResponse.solarPotential;
-		const yearlyKWhEnergyConsumption = (monthlyAverageEnergyBill / energyCostPerKWh) * 12;
+		const yearlyKWhEnergyConsumption = (monthlyAverageEnergyBill / energyCostPerKwh) * 12;
 		configId = solarPotential.solarPanelConfigs.findIndex(
 			(config) =>
 				config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyKWhEnergyConsumption,
@@ -123,6 +126,19 @@
 	function showNumber(x: number) {
 		return x.toLocaleString(undefined, { maximumFractionDigits: 1 });
 	}
+
+	function configIdOnChange(event: Event) {
+		const target = event.target as MdSlider;
+		configId = target.value ?? 0;
+	}
+
+	const panelCapacityWattsUI = {
+		show: () => panelCapacityWatts.toString(),
+		onChange: (event: Event) => {
+			const target = event.target as MdOutlinedTextField;
+			panelCapacityWatts = Number(target.value);
+		},
+	};
 </script>
 
 {#if !buildingInsightsResponse}
@@ -181,18 +197,19 @@
 				<md-slider
 					class="w-full"
 					value={configId}
+					min={0}
 					max={buildingInsightsResponse.solarPotential.solarPanelConfigs.length - 1}
-					on:change={(event) => (configId = event.target.value)}
+					on:change={configIdOnChange}
 				/>
 			</div>
 
 			<md-outlined-text-field
 				type="number"
 				label="Panel capacity"
-				value={panelCapacityWatts.toString()}
+				value={panelCapacityWattsUI.show()}
 				min={0}
 				suffix-text="Watts"
-				on:change={(event) => (panelCapacityWatts = Number(event.target.value))}
+				on:change={panelCapacityWattsUI.onChange}
 			>
 				<md-icon slot="leadingicon">bolt</md-icon>
 			</md-outlined-text-field>
@@ -202,32 +219,30 @@
 				on:click={() => (showPanels = !showPanels)}
 			>
 				<md-switch id="show-panels" role={undefined} selected={showPanels} />
-				<span class="ml-3 body-large">Show panels</span>
-			</button>
-
-			<button
-				class="p-2 relative inline-flex items-center"
-				on:click={() => (showDataLayer = !showDataLayer)}
-			>
-				<md-switch id="show-panels" role={undefined} selected={showDataLayer} />
-				<span class="ml-3 body-large">Show data layer</span>
+				<span class="ml-3 body-large">Solar panels</span>
 			</button>
 
 			<div class="grid justify-items-end">
-				<md-filled-tonal-button role={undefined} on:click={() => buildingInsightsDialog.show()}>
+				<md-filled-tonal-button role={undefined} on:click={() => moreDetailsDialog.show()}>
 					More details
 				</md-filled-tonal-button>
 			</div>
 
-			<md-dialog bind:this={buildingInsightsDialog}>
-				<span slot="headline">
-					<div class="flex items-center">
+			<md-dialog bind:this={moreDetailsDialog}>
+				<div slot="headline">
+					<div class="flex items-center primary-text">
 						<md-icon>{icon}</md-icon>
 						<b>&nbsp;{title}</b>
 					</div>
-				</span>
-				<Show value={buildingInsightsResponse} label="buildingInsightsResponse" />
-				<md-text-button slot="footer" dialog-action="close">Close</md-text-button>
+				</div>
+				<div slot="content">
+					<Show value={buildingInsightsResponse} label="buildingInsightsResponse" />
+				</div>
+				<div slot="actions">
+					<md-text-button role={undefined} on:click={() => moreDetailsDialog.close()}>
+						Close
+					</md-text-button>
+				</div>
 			</md-dialog>
 		</div>
 	</Expandable>

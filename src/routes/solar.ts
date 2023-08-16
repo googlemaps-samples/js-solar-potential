@@ -76,7 +76,7 @@ export interface SolarPotential {
 	roofSegmentStats: RoofSegmentSizeAndSunshineStats[];
 	solarPanels: SolarPanel[];
 	solarPanelConfigs: SolarPanelConfig[];
-	financialAnalyses: {};
+	financialAnalyses: object;
 }
 
 export interface SizeAndSunshineStats {

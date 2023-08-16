@@ -15,11 +15,13 @@
  -->
 
 <script lang="ts">
+	/* global google */
+
 	import type { MdDialog } from '@material/web/dialog/dialog';
 	import Calendar from '../components/Calendar.svelte';
 	import Dropdown from '../components/Dropdown.svelte';
 	import Expandable from '../components/Expandable.svelte';
-	import { getLayer, type Layer, type Palette } from '../layer';
+	import { getLayer, type Layer } from '../layer';
 	import {
 		getDataLayerUrls,
 		type BuildingInsightsResponse,
@@ -30,6 +32,7 @@
 	import Show from '../components/Show.svelte';
 	import SummaryCard from '../components/SummaryCard.svelte';
 	import { onMount } from 'svelte';
+	import type { MdSwitch } from '@material/web/switch/switch';
 
 	export let expandedSection: string;
 	export let frame: number;
@@ -40,7 +43,6 @@
 	export let buildingInsightsResponse: BuildingInsightsResponse;
 	export let googleMapsApiKey: string;
 	export let showPanels = true;
-	export let showDataLayer = true;
 	export let spherical: typeof google.maps.geometry.spherical;
 	export let map: google.maps.Map;
 
@@ -58,7 +60,7 @@
 	};
 
 	let dataLayersResponse: DataLayersResponse | RequestError | undefined;
-	let dataLayersDialog: MdDialog;
+	let moreDetailsDialog: MdDialog;
 	let layerId: LayerId | 'none' = 'monthlyFlux';
 
 	let showRoofOnly = false;
@@ -108,10 +110,6 @@
 		}
 
 		const bounds = layer.bounds;
-		if (!showDataLayer) {
-			return;
-		}
-
 		console.log('Render layer:', {
 			layerId: layer.id,
 			showRoofOnly: showRoofOnly,
@@ -140,6 +138,22 @@
 	$: frame, (frame = playAnimation ? frame : stopFrame);
 
 	onMount(() => drawDataLayer(layerId, true));
+
+	function showRoofOnlyOnChange(event: Event) {
+		const target = event.target as MdSwitch;
+		showRoofOnly = target.selected;
+		drawDataLayer(layerId);
+	}
+
+	function playAnimationOnChange(event: Event) {
+		const target = event.target as MdSwitch;
+		playAnimation = target.selected;
+		if (playAnimation) {
+			frame++;
+		} else {
+			stopFrame = frame;
+		}
+	}
 </script>
 
 {#if !dataLayersResponse}
@@ -198,7 +212,7 @@
 						on:click={() => (showPanels = !showPanels)}
 					>
 						<md-switch id="show-panels" role={undefined} selected={showPanels} />
-						<span class="ml-3 body-large">Show panels</span>
+						<span class="ml-3 body-large">Solar panels</span>
 					</button>
 
 					<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
@@ -206,12 +220,9 @@
 							id="mask"
 							role={undefined}
 							selected={showRoofOnly}
-							on:click={(event) => {
-								showRoofOnly = event.target.selected;
-								drawDataLayer(layerId);
-							}}
+							on:click={showRoofOnlyOnChange}
 						/>
-						<span class="ml-3 body-large">Show roof only</span>
+						<span class="ml-3 body-large">Roof only</span>
 					</label>
 
 					{#if ['monthlyFlux', 'hourlyShade'].includes(layerId)}
@@ -220,14 +231,7 @@
 								id="mask"
 								role={undefined}
 								selected={playAnimation}
-								on:click={(event) => {
-									playAnimation = event.target.selected;
-									if (playAnimation) {
-										frame++;
-									} else {
-										stopFrame = frame;
-									}
-								}}
+								on:click={playAnimationOnChange}
 							/>
 							<span class="ml-3 body-large">Play animation</span>
 						</label>
@@ -235,20 +239,26 @@
 				{/if}
 				<div class="flex flex-row">
 					<div class="grow" />
-					<md-filled-tonal-button role={undefined} on:click={() => dataLayersDialog.show()}>
+					<md-filled-tonal-button role={undefined} on:click={() => moreDetailsDialog.show()}>
 						More details
 					</md-filled-tonal-button>
 				</div>
 
-				<md-dialog bind:this={dataLayersDialog}>
-					<span slot="headline">
-						<div class="flex items-center">
+				<md-dialog bind:this={moreDetailsDialog}>
+					<div slot="headline">
+						<div class="flex items-center primary-text">
 							<md-icon>{icon}</md-icon>
 							<b>&nbsp;{title}</b>
 						</div>
-					</span>
-					<Show value={dataLayersResponse} label="dataLayersResponse" />
-					<md-text-button slot="footer" dialog-action="close">Close</md-text-button>
+					</div>
+					<div slot="content">
+						<Show value={dataLayersResponse} label="dataLayersResponse" />
+					</div>
+					<div slot="actions">
+						<md-text-button role={undefined} on:click={() => moreDetailsDialog.close()}>
+							Close
+						</md-text-button>
+					</div>
 				</md-dialog>
 			{/if}
 		</div>

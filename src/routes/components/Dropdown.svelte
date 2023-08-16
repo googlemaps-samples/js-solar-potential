@@ -15,10 +15,10 @@
  -->
 
 <script lang="ts">
-	export let options: any[] | Record<any, any>;
-	export let value: any;
+	export let options: Record<string, string>;
+	export let value: string;
 	export let expandTop = false;
-	export let onChange: (x: any) => void = () => {};
+	export let onChange: (x: string) => void = () => {};
 
 	let opened = false;
 </script>
@@ -48,7 +48,7 @@
 				expandTop ? 'bottom-full' : ''
 			} w-full p-2 rounded-lg shadow-xl z-20`}
 		>
-			<div></div>
+			<div />
 			{#each Object.keys(options) as option}
 				<button
 					class="dropdown-item block px-4 py-2 w-full text-left rounded"
