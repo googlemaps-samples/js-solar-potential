@@ -28,13 +28,14 @@
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const defaultPlace = {
-		name: 'Sonoma Valley Regional Library',
-		address: '755 W Napa St, Sonoma, CA 95476',
+		name: 'Tully Community Branch Library',
+		address: '880 Tully Rd, San Jose, CA 95111',
 	};
 	let location: google.maps.LatLng | undefined;
 	const zoom = 19;
 
 	let expandedSection: string = '';
+	let showPanels = true;
 	let showDataLayer = true;
 	let panelCapacityWatts = 250;
 	let monthlyAverageEnergyBill = 300;
@@ -167,6 +168,7 @@
 						bind:configId
 						bind:expandedSection
 						bind:buildingInsightsResponse
+						bind:showPanels
 						bind:showDataLayer
 						bind:panelCapacityWatts
 						{monthlyAverageEnergyBill}
@@ -188,9 +190,10 @@
 						bind:layer
 						bind:month
 						bind:day
+						bind:showPanels
+						bind:showDataLayer
 						{buildingInsightsResponse}
 						{googleMapsApiKey}
-						{showDataLayer}
 						{spherical}
 						{map}
 					/>

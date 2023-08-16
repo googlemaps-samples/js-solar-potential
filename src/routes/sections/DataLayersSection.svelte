@@ -39,6 +39,7 @@
 	export let day = 14;
 	export let buildingInsightsResponse: BuildingInsightsResponse;
 	export let googleMapsApiKey: string;
+	export let showPanels = true;
 	export let showDataLayer = true;
 	export let spherical: typeof google.maps.geometry.spherical;
 	export let map: google.maps.Map;
@@ -191,6 +192,14 @@
 					{#if layerId == 'hourlyShade'}
 						<Calendar bind:month bind:day onChange={() => drawDataLayer(layerId)} />
 					{/if}
+
+					<button
+						class="p-2 relative inline-flex items-center"
+						on:click={() => (showPanels = !showPanels)}
+					>
+						<md-switch id="show-panels" role={undefined} selected={showPanels} />
+						<span class="ml-3 body-large">Show panels</span>
+					</button>
 
 					<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
 						<md-switch

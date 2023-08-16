@@ -30,6 +30,7 @@
 
 	export let configId: number;
 	export let expandedSection: string;
+	export let showPanels = true;
 	export let showDataLayer = true;
 	export let panelCapacityWatts: number;
 	export let monthlyAverageEnergyBill: number;
@@ -45,8 +46,6 @@
 	const title = 'Building Insights endpoint';
 
 	let buildingInsightsDialog: MdDialog;
-
-	let showPanels = true;
 
 	let solarPanels: google.maps.Polygon[] = [];
 
@@ -200,9 +199,7 @@
 
 			<button
 				class="p-2 relative inline-flex items-center"
-				on:click={() => {
-					showPanels = !showPanels;
-				}}
+				on:click={() => (showPanels = !showPanels)}
 			>
 				<md-switch id="show-panels" role={undefined} selected={showPanels} />
 				<span class="ml-3 body-large">Show panels</span>
