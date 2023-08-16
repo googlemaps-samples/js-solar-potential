@@ -2,58 +2,85 @@
 
 > _This is not an officially supported Google product._
 
-## Tech stack
+The [Solar API](https://developers.google.com/maps/documentation/solar/overview)
+offers many benefits to solar marketplace websites, solar installers, and solar SaaS designers.
 
-* [SvelteKit](https://kit.svelte.dev): Compiler framework to develop reactive web apps in a declarative style.
-* [Vite](https://vitejs.dev): Build tool with a fast development experience for modern web projects.
-* [Material Desgin 3](https://m3.material.io): Material Design 3 [web components](https://github.com/material-components/material-web#readme).
-* [Tailwind](https://tailwindcss.com): CSS framework for design and styling.
-* [TypeScript](https://www.typescriptlang.org): Provides type checking and type inference for JavaScript.
+This is a demo app that showcases and displays the information from the Solar API into a map.
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
+## Before you begin
 
-## Creating a project
+You need a Google Cloud project with a billing account and the Maps JavaScript API and Solar API enabled.
 
-If you're seeing this, you've probably already done this step. Congrats!
+To learn more, see [Set up in Cloud Console](https://developers.google.com/maps/documentation/javascript/cloud-setup).
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
+Additionally, you need a development environment with [Node.js](https://nodejs.org/en) installed.
 
-# create a new project in my-app
-npm create svelte@latest my-app
-```
+## Google Maps API key
 
-## Developing
+This app requires a Google Maps API key to work, follow the [Use API Keys](https://developers.google.com/maps/documentation/javascript/get-api-key) guide to create a new one.
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
-
-## Deploying
+Once you have your API key, update the [`.env`](.env) file with your key.
 
 ```sh
+VITE_GOOGLE_MAPS_API_KEY="My Google Maps API key"
+```
+
+## Running the app
+
+First, run `npm install` to install the required dependencies.
+
+### Developer mode
+
+To start the app in developer mode, this allows hot-reloads.
+This means that every time you change a file, the app reloads itself automatically.
+
+```sh
+# Run in developer mode.
+npm run dev
+```
+
+### Production mode
+
+Starting in developer mode enables a lot of useful tools while developing, but for a production version we first need to build the app.
+
+```sh
+# Build the app.
+npm run build
+
+# Start the app.
+npm run start
+```
+
+## Deploying to Cloud Run
+
+One option to deploy your app is with [Cloud Run](https://cloud.google.com/run).
+It's easy to use and allows us to build and deploy scalable containerized apps written in any language on a fully managed platform.
+
+For some languages like Node.js, it infers the configuration and can [deploy from source directly](https://cloud.google.com/run/docs/deploying-source-code), without any additional configurations!
+
+```sh
+# Choose the Cloud location to deploy the app.
 export LOCATION="us-central1"
 
+# Build and deploy the app from source.
 gcloud run deploy "solar-potential" \
   --source="." \
   --region="$LOCATION" \
   --allow-unauthenticated
 ```
+
+
+## Checking your code
+
+
+
+## Tech stack
+
+- [Solar API](https://developers.google.com/maps/documentation/solar/overview): Get solar panel configurations, solar potential, and data layers.
+- [Google Maps](https://developers.google.com/maps/documentation/javascript/overview): Display a custom map with the Google Maps JavaScript API.
+- [Material Desgin 3](https://m3.material.io): Material Design 3 [web components](https://github.com/material-components/material-web#readme).
+- [SvelteKit](https://kit.svelte.dev): Compiler framework to develop declarative reactive web apps with [TypeScript](https://www.typescriptlang.org).
+- [Vite](https://vitejs.dev): Build tool with a fast development experience for modern web projects.
+- [Tailwind](https://tailwindcss.com): CSS framework for design and styling.
+- [ESLint](https://eslint.org): Statically analyze code to quickly find problems.
+- [Prettier](https://prettier.io): Opinionated code formatter.
