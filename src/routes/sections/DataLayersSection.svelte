@@ -79,10 +79,17 @@
 			const center = buildingInsightsResponse.center;
 			const ne = buildingInsightsResponse.boundingBox.ne;
 			const sw = buildingInsightsResponse.boundingBox.sw;
-			const diameter = spherical.computeDistanceBetween(
-				new google.maps.LatLng(ne.latitude, ne.longitude),
-				new google.maps.LatLng(sw.latitude, sw.longitude),
+			const [north, east] = [ne.latitude, ne.longitude];
+			const [south, west] = [sw.latitude, sw.longitude];
+			const horizontalDistance = spherical.computeDistanceBetween(
+				new google.maps.LatLng(north, west),
+				new google.maps.LatLng(north, east),
 			);
+			const verticalDistance = spherical.computeDistanceBetween(
+				new google.maps.LatLng(north, west),
+				new google.maps.LatLng(south, west),
+			);
+			const diameter = Math.max(horizontalDistance, verticalDistance);
 			const radius = Math.ceil(diameter / 2);
 			try {
 				dataLayersResponse = await getDataLayerUrls(center, radius, googleMapsApiKey);
@@ -219,9 +226,9 @@
 				{/if}
 				<div class="flex flex-row">
 					<div class="grow" />
-					<md-tonal-button role={undefined} on:click={() => dataLayersDialog.show()}>
+					<md-filled-tonal-button role={undefined} on:click={() => dataLayersDialog.show()}>
 						More details
-					</md-tonal-button>
+					</md-filled-tonal-button>
 				</div>
 
 				<md-dialog bind:this={dataLayersDialog}>

@@ -38,9 +38,9 @@
 		<p class="label-medium outline-text">{subtitle}</p>
 		<p class="label-medium outline-text">{subtitle2}</p>
 	</div>
-	<md-standard-icon-button>
+	<md-icon-button>
 		<md-icon>{section == title ? 'expand_less' : 'expand_more'}</md-icon>
-	</md-standard-icon-button>
+	</md-icon-button>
 </button>
 
 {#if section == title}

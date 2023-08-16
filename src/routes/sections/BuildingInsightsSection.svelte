@@ -217,9 +217,9 @@
 			</button>
 
 			<div class="grid justify-items-end">
-				<md-tonal-button role={undefined} on:click={() => buildingInsightsDialog.show()}>
+				<md-filled-tonal-button role={undefined} on:click={() => buildingInsightsDialog.show()}>
 					More details
-				</md-tonal-button>
+				</md-filled-tonal-button>
 			</div>
 
 			<md-dialog bind:this={buildingInsightsDialog}>
@@ -281,9 +281,9 @@
 								max={solarPanels.length}
 								style="--md-circular-progress-size: 72px;"
 							/>
-							<md-standard-icon-button class="absolute inset-0 m-auto">
+							<md-icon-button class="absolute inset-0 m-auto">
 								<md-icon class="primary-text">solar_power</md-icon>
-							</md-standard-icon-button>
+							</md-icon-button>
 						</div>
 						<p class="p-2 body-medium">
 							<span class="primary-text">
@@ -303,9 +303,9 @@
 									.yearlyEnergyDcKwh * panelCapacityRatio}
 								style="--md-circular-progress-size: 72px;"
 							/>
-							<md-standard-icon-button class="absolute inset-0 m-auto">
+							<md-icon-button class="absolute inset-0 m-auto">
 								<md-icon class="primary-text">energy_savings_leaf</md-icon>
-							</md-standard-icon-button>
+							</md-icon-button>
 						</div>
 						<p class="p-2 body-medium">
 							<span class="primary-text">

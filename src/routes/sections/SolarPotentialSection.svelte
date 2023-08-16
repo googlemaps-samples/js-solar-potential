@@ -321,7 +321,7 @@
 		{/if}
 
 		<div class="grid justify-items-end">
-			<md-tonal-button
+			<md-filled-tonal-button
 				trailing-icon
 				role={undefined}
 				href="https://static.googleusercontent.com/media/www.google.com/en//get/sunroof/assets/cost-savings-methodology.pdf"
@@ -329,7 +329,7 @@
 			>
 				More details
 				<md-icon slot="icon">open_in_new</md-icon>
-			</md-tonal-button>
+			</md-filled-tonal-button>
 		</div>
 	</div>
 </Expandable>
