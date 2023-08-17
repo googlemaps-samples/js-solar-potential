@@ -27,12 +27,11 @@
 	import AnimationBar from './components/AnimationBar.svelte';
 	import type { Layer } from './layer';
 	import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
-	import Show from './components/Show.svelte';
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const defaultPlace = {
-		name: 'Tully Community Branch Library',
-		address: '880 Tully Rd, San Jose, CA 95111',
+		name: 'Rinconada Library',
+		address: '1213 Newell Rd, Palo Alto, CA 94303',
 	};
 	let location: google.maps.LatLng | undefined;
 	const zoom = 19;
