@@ -23,12 +23,16 @@
 	import SummaryCard from '../components/SummaryCard.svelte';
 	import type { SolarPanelConfig } from '../solar';
 	import Table from '../components/Table.svelte';
-	import type { MdOutlinedTextField } from '@material/web/textfield/outlined-text-field';
-	import type { MdSlider } from '@material/web/slider/slider';
 
 	/* eslint-disable @typescript-eslint/ban-ts-comment */
 	// @ts-ignore
 	import { GoogleCharts } from 'google-charts';
+	import { findSolarConfig, showMoney, showNumber } from '../utils';
+	import InputNumber from '../components/InputNumber.svelte';
+	import InputPanelsCount from '../components/InputPanelsCount.svelte';
+	import InputMoney from '../components/InputMoney.svelte';
+	import InputPercent from '../components/InputPercent.svelte';
+	import InputRatio from '../components/InputRatio.svelte';
 
 	export let expandedSection: string;
 	export let configId: number;
@@ -43,104 +47,16 @@
 	const title = 'Solar Potential analysis';
 
 	// Basic settings
-	const monthlyAverageEnergyBillUI = {
-		show: () => monthlyAverageEnergyBill.toFixed(2),
-		onChange: (event: Event) => {
-			const target = event.target as MdOutlinedTextField;
-			monthlyAverageEnergyBill = Number(target.value);
-		},
-	};
-
 	let panelCapacityRatio = 1.0;
 	$: panelCapacityRatio = panelCapacityWatts / defaultPanelCapacityWatts;
-	$: configId = solarPanelConfigs.findIndex(
-		(config) =>
-			config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyKWhEnergyConsumption,
-	);
-	$: console.log(panelCapacityRatio * dcToAcDerate);
-	function configIdOnChange(event: Event) {
-		const target = event.target as MdSlider;
-		configId = target.value ?? 0;
-	}
-
-	const energyCostPerKwhUI = {
-		show: () => energyCostPerKwh.toFixed(2),
-		onChange: (event: Event) => {
-			const target = event.target as MdOutlinedTextField;
-			energyCostPerKwh = Number(target.value);
-		},
-	};
-
 	let solarIncentives: number = 7000;
-	const solarIncentivesUI = {
-		show: () => solarIncentives.toFixed(2),
-		onChange: (event: Event) => {
-			const target = event.target as MdOutlinedTextField;
-			solarIncentives = Number(target.value);
-		},
-	};
-
 	let installationCostPerWatt: number = 4.0;
-	const installationCostPerWattUI = {
-		show: () => installationCostPerWatt.toFixed(2),
-		onChange: (event: Event) => {
-			const target = event.target as MdOutlinedTextField;
-			installationCostPerWatt = Number(target.value);
-		},
-	};
-
-	const panelCapacityWattsUI = {
-		show: () => panelCapacityWatts.toString(),
-		onChange: (event: Event) => {
-			const target = event.target as MdOutlinedTextField;
-			panelCapacityWatts = Number(target.value);
-		},
-	};
-
 	let installationLifeSpan = 20;
-	const installationLifeSpanUI = {
-		show: () => installationLifeSpan.toString(),
-		onChange: (event: Event) => {
-			const target = event.target as MdOutlinedTextField;
-			installationLifeSpan = Number(target.value);
-		},
-	};
 
 	// Advanced settings
-	const dcToAcDerateUI = {
-		show: () => dcToAcDerate * 100,
-		onChange: (event: Event) => {
-			const target = event.target as MdOutlinedTextField;
-			dcToAcDerate = Number(target.value) / 100;
-		},
-	};
-
 	let efficiencyDepreciationFactor = 0.995;
-	const efficiencyDepreciationFactorUI = {
-		show: () => ((1 - efficiencyDepreciationFactor) * 100).toFixed(1),
-		onChange: (event: Event) => {
-			const target = event.target as MdOutlinedTextField;
-			efficiencyDepreciationFactor = 1 - Number(target.value) / 100;
-		},
-	};
-
 	let costIncreaseFactor = 1.022;
-	const costIncreaseFactorUI = {
-		show: () => ((costIncreaseFactor - 1) * 100).toFixed(1),
-		onChange: (event: Event) => {
-			const target = event.target as MdOutlinedTextField;
-			costIncreaseFactor = Number(target.value) / 100 + 1;
-		},
-	};
-
 	let discountRate = 1.04;
-	const discountRateUI = {
-		show: () => ((discountRate - 1) * 100).toFixed(1),
-		onChange: (event: Event) => {
-			const target = event.target as MdOutlinedTextField;
-			discountRate = Number(target.value) / 100 + 1;
-		},
-	};
 
 	// Calculations
 	let installationCostTotal: number;
@@ -246,15 +162,13 @@
 		{ packages: ['line'] },
 	);
 
-	function showNumber(x: number) {
-		return x.toLocaleString(undefined, { maximumFractionDigits: 1 });
-	}
-
-	function showMoney(amount: number) {
-		return `$${amount.toLocaleString(undefined, {
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2,
-		})}`;
+	function updateConfig() {
+		configId = findSolarConfig(
+			solarPanelConfigs,
+			yearlyKWhEnergyConsumption,
+			panelCapacityRatio,
+			dcToAcDerate,
+		);
 	}
 </script>
 
@@ -267,81 +181,43 @@
 	secondary
 >
 	<div class="flex flex-col space-y-4 pt-1">
-		<md-outlined-text-field
-			type="number"
+		<InputMoney
+			bind:value={monthlyAverageEnergyBill}
+			icon="credit_card"
 			label="Monthly average energy bill"
-			value={monthlyAverageEnergyBillUI.show()}
-			min={0}
-			prefix-text="$"
-			on:change={monthlyAverageEnergyBillUI.onChange}
-		>
-			<md-icon slot="leadingicon">credit_card</md-icon>
-		</md-outlined-text-field>
+			onChange={updateConfig}
+		/>
 
-		<div>
-			<table class="table-auto w-full body-medium secondary-text">
-				<tr>
-					<td class="primary-text"><md-icon>solar_power</md-icon> </td>
-					<th class="pl-2 text-left">Panels count</th>
-					<td class="pl-2 text-right">
-						<span>{solarPanelConfigs[configId]?.panelsCount} panels</span>
-					</td>
-				</tr>
-			</table>
-			<div>
-				<md-slider
-					class="w-full"
-					value={configId}
-					min={0}
-					max={solarPanelConfigs.length - 1}
-					on:change={configIdOnChange}
-				/>
-			</div>
-		</div>
+		<InputPanelsCount bind:configId {solarPanelConfigs} />
 
-		<md-outlined-text-field
-			type="number"
+		<InputMoney
+			bind:value={energyCostPerKwh}
+			icon="paid"
 			label="Energy cost per KWh"
-			value={energyCostPerKwhUI.show()}
-			min={0}
-			prefix-text="$"
-			on:change={energyCostPerKwhUI.onChange}
-		>
-			<md-icon slot="leadingicon">paid</md-icon>
-		</md-outlined-text-field>
+			onChange={updateConfig}
+		/>
 
-		<md-outlined-text-field
-			type="number"
+		<InputMoney
+			bind:value={solarIncentives}
+			icon="redeem"
 			label="Solar incentives"
-			value={solarIncentivesUI.show()}
-			min={0}
-			prefix-text="$"
-			on:change={solarIncentivesUI.onChange}
-		>
-			<md-icon slot="leadingicon">redeem</md-icon>
-		</md-outlined-text-field>
+			onChange={updateConfig}
+		/>
 
-		<md-outlined-text-field
-			type="number"
+		<InputMoney
+			bind:value={installationCostPerWatt}
+			icon="request_quote"
 			label="Installation cost per Watt"
-			value={installationCostPerWattUI.show()}
-			min={0}
-			prefix-text="$"
-			on:change={installationCostPerWattUI.onChange}
-		>
-			<md-icon slot="leadingicon">request_quote</md-icon>
-		</md-outlined-text-field>
+			onChange={updateConfig}
+		/>
 
-		<md-outlined-text-field
-			type="number"
+		<InputNumber
+			bind:value={panelCapacityWatts}
+			icon="bolt"
 			label="Panel capacity"
-			value={panelCapacityWattsUI.show()}
-			min={0}
-			suffix-text="Watts"
-			on:change={panelCapacityWattsUI.onChange}
-		>
-			<md-icon slot="leadingicon">bolt</md-icon>
-		</md-outlined-text-field>
+			suffix="Watts"
+			onChange={updateConfig}
+		/>
 
 		<div class="flex flex-col items-center w-full">
 			<md-text-button
@@ -358,64 +234,42 @@
 
 		{#if showAdvancedSettings}
 			<div class="flex flex-col space-y-4" transition:slide={{ duration: 200 }}>
-				<md-outlined-text-field
-					type="number"
+				<InputNumber
+					bind:value={installationLifeSpan}
+					icon="date_range"
 					label="Installation lifespan"
-					value={installationLifeSpanUI.show()}
-					min={0}
-					suffix-text="years"
-					on:change={installationLifeSpanUI.onChange}
-				>
-					<md-icon slot="leadingicon">date_range</md-icon>
-				</md-outlined-text-field>
+					suffix="years"
+					onChange={updateConfig}
+				/>
 
-				<md-outlined-text-field
-					type="number"
-					label="DC to AC conversion efficiency"
-					value={dcToAcDerateUI.show()}
-					min={0}
-					max={100}
-					suffix-text="%"
-					on:change={dcToAcDerateUI.onChange}
-				>
-					<md-icon slot="leadingicon">dynamic_form</md-icon>
-				</md-outlined-text-field>
+				<InputPercent
+					bind:value={dcToAcDerate}
+					icon="dynamic_form"
+					label="DC to AC conversion "
+					onChange={updateConfig}
+				/>
 
-				<md-outlined-text-field
-					type="number"
+				<InputRatio
+					bind:value={efficiencyDepreciationFactor}
+					icon="trending_down"
 					label="Panel efficiency decline per year"
-					value={efficiencyDepreciationFactorUI.show()}
-					min={0}
-					max={100}
-					suffix-text="%"
-					on:change={efficiencyDepreciationFactorUI.onChange}
-				>
-					<md-icon slot="leadingicon">trending_down</md-icon>
-				</md-outlined-text-field>
+					decrease
+					onChange={updateConfig}
+				/>
 
-				<md-outlined-text-field
-					type="number"
+				<InputRatio
+					bind:value={costIncreaseFactor}
+					icon="price_change"
 					label="Energy cost increase per year"
-					value={costIncreaseFactorUI.show()}
-					min={0}
-					max={100}
-					suffix-text="%"
-					on:change={costIncreaseFactorUI.onChange}
-				>
-					<md-icon slot="leadingicon">price_change</md-icon>
-				</md-outlined-text-field>
+					onChange={updateConfig}
+				/>
 
-				<md-outlined-text-field
-					type="number"
-					label="Energy discount increase per year"
-					value={discountRateUI.show()}
-					min={0}
-					max={100}
-					suffix-text="%"
-					on:change={discountRateUI.onChange}
-				>
-					<md-icon slot="leadingicon">local_offer</md-icon>
-				</md-outlined-text-field>
+				<InputRatio
+					bind:value={discountRate}
+					icon="local_offer"
+					label="Discount rate per year"
+					onChange={updateConfig}
+				/>
 			</div>
 		{/if}
 

@@ -38,7 +38,7 @@ export async function getLayer(
 ): Promise<Layer> {
 	const get: Record<LayerId, () => Promise<Layer>> = {
 		mask: async () => {
-			const mask = await downloadGeoTIFF('mask', urls.maskUrl, googleMapsApiKey);
+			const mask = await downloadGeoTIFF(urls.maskUrl, googleMapsApiKey);
 			const colors = binaryPalette;
 			return {
 				id: layerId,
@@ -59,8 +59,8 @@ export async function getLayer(
 		},
 		dsm: async () => {
 			const [mask, data] = await Promise.all([
-				downloadGeoTIFF('mask', urls.maskUrl, googleMapsApiKey),
-				downloadGeoTIFF('dsm', urls.dsmUrl, googleMapsApiKey),
+				downloadGeoTIFF(urls.maskUrl, googleMapsApiKey),
+				downloadGeoTIFF(urls.dsmUrl, googleMapsApiKey),
 			]);
 			const sortedValues = Array.from(data.rasters[0]).sort((x, y) => x - y);
 			const minValue = sortedValues[0];
@@ -87,8 +87,8 @@ export async function getLayer(
 		},
 		rgb: async () => {
 			const [mask, data] = await Promise.all([
-				downloadGeoTIFF('mask', urls.maskUrl, googleMapsApiKey),
-				downloadGeoTIFF('rgb', urls.rgbUrl, googleMapsApiKey),
+				downloadGeoTIFF(urls.maskUrl, googleMapsApiKey),
+				downloadGeoTIFF(urls.rgbUrl, googleMapsApiKey),
 			]);
 			return {
 				id: layerId,
@@ -98,8 +98,8 @@ export async function getLayer(
 		},
 		annualFlux: async () => {
 			const [mask, data] = await Promise.all([
-				downloadGeoTIFF('mask', urls.maskUrl, googleMapsApiKey),
-				downloadGeoTIFF('annualFlux', urls.annualFluxUrl, googleMapsApiKey),
+				downloadGeoTIFF(urls.maskUrl, googleMapsApiKey),
+				downloadGeoTIFF(urls.annualFluxUrl, googleMapsApiKey),
 			]);
 			const colors = ironPalette;
 			return {
@@ -123,8 +123,8 @@ export async function getLayer(
 		},
 		monthlyFlux: async () => {
 			const [mask, data] = await Promise.all([
-				downloadGeoTIFF('mask', urls.maskUrl, googleMapsApiKey),
-				downloadGeoTIFF('annualFlux', urls.monthlyFluxUrl, googleMapsApiKey),
+				downloadGeoTIFF(urls.maskUrl, googleMapsApiKey),
+				downloadGeoTIFF(urls.monthlyFluxUrl, googleMapsApiKey),
 			]);
 			const colors = ironPalette;
 			return {
@@ -150,8 +150,8 @@ export async function getLayer(
 		},
 		hourlyShade: async () => {
 			const [mask, ...months] = await Promise.all([
-				downloadGeoTIFF('mask', urls.maskUrl, googleMapsApiKey),
-				...urls.hourlyShadeUrls.map((url) => downloadGeoTIFF('hourlyShade', url, googleMapsApiKey)),
+				downloadGeoTIFF(urls.maskUrl, googleMapsApiKey),
+				...urls.hourlyShadeUrls.map((url) => downloadGeoTIFF(url, googleMapsApiKey)),
 			]);
 			const colors = sunlightPalette;
 			return {

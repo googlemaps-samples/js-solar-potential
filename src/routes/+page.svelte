@@ -20,13 +20,10 @@
 	import { Loader } from '@googlemaps/js-api-loader';
 	import { onMount } from 'svelte';
 
-	import BuildingInsightsSection from './sections/BuildingInsightsSection.svelte';
-	import DataLayersSection from './sections/DataLayersSection.svelte';
-	import type { BuildingInsightsResponse, RequestError } from './solar';
-	import SolarPotentialSection from './sections/SolarPotentialSection.svelte';
 	import AnimationBar from './components/AnimationBar.svelte';
 	import type { Layer } from './layer';
-	import type { MdFilledTextField } from '@material/web/textfield/filled-text-field';
+	import SearchBar from './components/SearchBar.svelte';
+	import Sections from './sections/Sections.svelte';
 
 	const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 	const defaultPlace = {
@@ -36,46 +33,39 @@
 	let location: google.maps.LatLng | undefined;
 	const zoom = 19;
 
-	let expandedSection: string = '';
-	let showPanels = true;
-	let panelCapacityWatts = 250;
-	let monthlyAverageEnergyBill = 300;
-	let energyCostPerKwh = 0.31;
-	let dcToAcDerate = 0.85;
-	let configId = 0;
-
-	let buildingInsightsResponse: BuildingInsightsResponse | RequestError | undefined;
 	let mapElement: HTMLElement;
-	let autocompleteElement: MdFilledTextField;
 	let animationElement: HTMLElement;
 
 	let frame = 0;
-	let overlays: google.maps.GroundOverlay[];
-	let layer: Layer;
-	let month: number;
-	let day: number;
+	let layer: Layer | null = null;
+	let month: number = 3;
+	let day: number = 14;
 
 	// Initialize app.
 	let map: google.maps.Map;
-	let spherical: typeof google.maps.geometry.spherical;
+	let geometryLibrary: google.maps.GeometryLibrary;
+	let mapsLibrary: google.maps.MapsLibrary;
+	let placesLibrary: google.maps.PlacesLibrary;
 	onMount(async () => {
-		// Load the Google Maps services.
+		// Load the Google Maps libraries.
 		const loader = new Loader({ apiKey: googleMapsApiKey });
+		const libraries = {
+			geometry: loader.importLibrary('geometry'),
+			maps: loader.importLibrary('maps'),
+			places: loader.importLibrary('places'),
+		};
+		geometryLibrary = await libraries.geometry;
+		mapsLibrary = await libraries.maps;
+		placesLibrary = await libraries.places;
 
 		// Get the address information for the default location.
-		await loader.importLibrary('core');
 		const geocoder = new google.maps.Geocoder();
 		const geocoderResponse = await geocoder.geocode({ address: defaultPlace.address });
 		const geocoderResult = geocoderResponse.results[0];
-		autocompleteElement.value = defaultPlace.name;
-
-		// Load the spherical geometry to calculate distances.
-		({ spherical } = await loader.importLibrary('geometry'));
 
 		// Initialize the map at the desired location.
-		const { Map } = await loader.importLibrary('maps');
 		location = geocoderResult.geometry.location;
-		map = new Map(mapElement, {
+		map = new mapsLibrary.Map(mapElement, {
 			center: location,
 			zoom: zoom,
 			tilt: 0,
@@ -87,44 +77,6 @@
 			zoomControl: false,
 		});
 		map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(animationElement);
-
-		if (geocoderResult.geometry.viewport) {
-			// map.fitBounds(geocoderResult.geometry.viewport);
-			map.setCenter(geocoderResult.geometry.location);
-			map.setZoom(zoom);
-		} else {
-			map.setCenter(geocoderResult.geometry.location);
-			map.setZoom(zoom);
-		}
-
-		// Initialize the address search autocomplete.
-		const { Autocomplete } = await loader.importLibrary('places');
-		const inputElement = autocompleteElement.renderRoot.querySelector('.input') as HTMLInputElement;
-		const autocomplete = new Autocomplete(inputElement, {
-			fields: ['formatted_address', 'geometry', 'name'],
-		});
-		autocomplete.addListener('place_changed', async () => {
-			const place = autocomplete.getPlace();
-			if (!place.geometry || !place.geometry.location) {
-				autocompleteElement.value = '';
-				return;
-			}
-			if (place.geometry.viewport) {
-				// map.fitBounds(place.geometry.viewport);
-				map.setCenter(place.geometry.location);
-				map.setZoom(zoom);
-			} else {
-				map.setCenter(place.geometry.location);
-				map.setZoom(zoom);
-			}
-
-			location = place.geometry.location;
-			if (place.name) {
-				autocompleteElement.value = place.name;
-			} else if (place.formatted_address) {
-				autocompleteElement.value = place.formatted_address;
-			}
-		});
 
 		setInterval(() => {
 			frame++;
@@ -140,9 +92,9 @@
 	<!-- Side bar -->
 	<aside class="flex-none md:w-96 w-80 p-2 pt-3 overflow-auto">
 		<div class="flex flex-col space-y-2 h-full">
-			<md-filled-text-field bind:this={autocompleteElement} label="Search an address">
-				<md-icon slot="leadingicon">search</md-icon>
-			</md-filled-text-field>
+			{#if placesLibrary && map}
+				<SearchBar bind:location {placesLibrary} {map} initialValue={defaultPlace.name} />
+			{/if}
 
 			<div class="p-4 surface-variant outline-text rounded-lg space-y-3">
 				<p>
@@ -163,53 +115,18 @@
 				</p>
 			</div>
 
-			<div class="flex flex-col rounded-md shadow-md">
-				{#if location}
-					<BuildingInsightsSection
-						bind:configId
-						bind:expandedSection
-						bind:buildingInsightsResponse
-						bind:showPanels
-						bind:panelCapacityWatts
-						{monthlyAverageEnergyBill}
-						{energyCostPerKwh}
-						{dcToAcDerate}
-						{googleMapsApiKey}
-						{location}
-						{spherical}
-						{map}
-					/>
-				{/if}
-
-				{#if buildingInsightsResponse && !('error' in buildingInsightsResponse)}
-					<md-divider inset />
-					<DataLayersSection
-						bind:expandedSection
-						bind:frame
-						bind:overlays
-						bind:layer
-						bind:month
-						bind:day
-						bind:showPanels
-						{buildingInsightsResponse}
-						{googleMapsApiKey}
-						{spherical}
-						{map}
-					/>
-
-					<md-divider inset />
-					<SolarPotentialSection
-						bind:expandedSection
-						bind:configId
-						bind:monthlyAverageEnergyBill
-						bind:energyCostPerKwh
-						bind:panelCapacityWatts
-						bind:dcToAcDerate
-						solarPanelConfigs={buildingInsightsResponse.solarPotential.solarPanelConfigs}
-						defaultPanelCapacityWatts={buildingInsightsResponse.solarPotential.panelCapacityWatts}
-					/>
-				{/if}
-			</div>
+			{#if location}
+				<Sections
+					bind:frame
+					bind:layer
+					bind:month
+					bind:day
+					{location}
+					{map}
+					{geometryLibrary}
+					{googleMapsApiKey}
+				/>
+			{/if}
 
 			<div class="grow" />
 

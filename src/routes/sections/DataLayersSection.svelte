@@ -17,6 +17,8 @@
 <script lang="ts">
 	/* global google */
 
+	import { onMount } from 'svelte';
+
 	import type { MdDialog } from '@material/web/dialog/dialog';
 	import Calendar from '../components/Calendar.svelte';
 	import Dropdown from '../components/Dropdown.svelte';
@@ -29,21 +31,20 @@
 		type LayerId,
 		type RequestError,
 	} from '../solar';
+	import InputBool from '../components/InputBool.svelte';
 	import Show from '../components/Show.svelte';
 	import SummaryCard from '../components/SummaryCard.svelte';
-	import { onMount } from 'svelte';
-	import type { MdSwitch } from '@material/web/switch/switch';
 
 	export let expandedSection: string;
-	export let frame: number;
-	export let overlays: google.maps.GroundOverlay[] = [];
-	export let layer: Layer | null = null;
-	export let month = 3;
-	export let day = 14;
-	export let buildingInsightsResponse: BuildingInsightsResponse;
-	export let googleMapsApiKey: string;
 	export let showPanels = true;
-	export let spherical: typeof google.maps.geometry.spherical;
+	export let frame: number;
+	export let layer: Layer | null;
+	export let month: number;
+	export let day: number;
+
+	export let googleMapsApiKey: string;
+	export let buildingInsights: BuildingInsightsResponse;
+	export let geometryLibrary: google.maps.GeometryLibrary;
 	export let map: google.maps.Map;
 
 	const icon = 'layers';
@@ -59,18 +60,24 @@
 		hourlyShade: 'Hourly shade',
 	};
 
-	let dataLayersResponse: DataLayersResponse | RequestError | undefined;
+	let dataLayersResponse: DataLayersResponse | undefined;
+	let requestError: RequestError | undefined;
 	let moreDetailsDialog: MdDialog;
 	let layerId: LayerId | 'none' = 'monthlyFlux';
 
+	let overlays: google.maps.GroundOverlay[] = [];
 	let showRoofOnly = false;
 	let playAnimation = true;
-	async function drawDataLayer(layerId: LayerId | 'none', reset = false) {
+	async function showDataLayer(reset = false) {
 		if (reset) {
+			dataLayersResponse = undefined;
+			requestError = undefined;
+			layer = null;
+
+			// Default values per layer.
 			showRoofOnly = ['annualFlux', 'monthlyFlux', 'hourlyShade'].includes(layerId);
 			map.setMapTypeId(layerId == 'rgb' ? 'roadmap' : 'satellite');
 			overlays.map((overlay) => overlay.setMap(null));
-			layer = null;
 			frame = layerId == 'hourlyShade' ? 5 : 0;
 			playAnimation = ['monthlyFlux', 'hourlyShade'].includes(layerId);
 		}
@@ -79,32 +86,25 @@
 		}
 
 		if (!layer) {
-			const center = buildingInsightsResponse.center;
-			const ne = buildingInsightsResponse.boundingBox.ne;
-			const sw = buildingInsightsResponse.boundingBox.sw;
-			const [north, east] = [ne.latitude, ne.longitude];
-			const [south, west] = [sw.latitude, sw.longitude];
-			const horizontalDistance = spherical.computeDistanceBetween(
-				new google.maps.LatLng(north, west),
-				new google.maps.LatLng(north, east),
+			const center = buildingInsights.center;
+			const ne = buildingInsights.boundingBox.ne;
+			const sw = buildingInsights.boundingBox.sw;
+			const diameter = geometryLibrary.spherical.computeDistanceBetween(
+				new google.maps.LatLng(ne.latitude, ne.longitude),
+				new google.maps.LatLng(sw.latitude, sw.longitude),
 			);
-			const verticalDistance = spherical.computeDistanceBetween(
-				new google.maps.LatLng(north, west),
-				new google.maps.LatLng(south, west),
-			);
-			const diameter = Math.max(horizontalDistance, verticalDistance);
 			const radius = Math.ceil(diameter / 2);
 			try {
 				dataLayersResponse = await getDataLayerUrls(center, radius, googleMapsApiKey);
 			} catch (e) {
-				dataLayersResponse = e as RequestError;
+				requestError = e as RequestError;
 				return;
 			}
 
 			try {
 				layer = await getLayer(layerId, dataLayersResponse, googleMapsApiKey);
 			} catch (e) {
-				dataLayersResponse = e as RequestError;
+				requestError = e as RequestError;
 				return;
 			}
 		}
@@ -137,51 +137,34 @@
 	let stopFrame = 0;
 	$: frame, (frame = playAnimation ? frame : stopFrame);
 
-	onMount(() => drawDataLayer(layerId, true));
-
-	function showRoofOnlyOnChange(event: Event) {
-		const target = event.target as MdSwitch;
-		showRoofOnly = target.selected;
-		drawDataLayer(layerId);
-	}
-
-	function playAnimationOnChange(event: Event) {
-		const target = event.target as MdSwitch;
-		playAnimation = target.selected;
-		if (playAnimation) {
-			frame++;
-		} else {
-			stopFrame = frame;
-		}
-	}
+	onMount(() => showDataLayer(true));
 </script>
 
-{#if !dataLayersResponse}
-	<div class="grid py-8 place-items-center">
-		<md-circular-progress four-color indeterminate />
-	</div>
-{:else if 'error' in dataLayersResponse}
+{#if requestError}
 	<div class="error-container on-error-container-text">
-		<Expandable section={title} icon="error" {title} subtitle={dataLayersResponse.error.status}>
-			<div class="grid py-8 place-items-center">
-				<p class="title-large">ERROR {dataLayersResponse.error.code}</p>
-				<p class="body-medium">{dataLayersResponse.error.status}</p>
-				<p class="label-medium">{dataLayersResponse.error.message}</p>
-				<md-filled-button
-					class="pt-6"
-					role={undefined}
-					on:click={() => {
-						dataLayersResponse = undefined;
-						drawDataLayer(layerId);
-					}}
-				>
+		<Expandable section={title} icon="error" {title} subtitle={requestError.error.status}>
+			<div class="grid place-items-center py-2 space-y-4">
+				<div class="grid place-items-center">
+					<p class="body-medium">
+						Error on <code>dataLayers</code>
+						{layerId} request
+					</p>
+					<p class="title-large">ERROR {requestError.error.code}</p>
+					<p class="body-medium"><code>{requestError.error.status}</code></p>
+					<p class="label-medium">{requestError.error.message}</p>
+				</div>
+				<md-filled-button role={undefined} on:click={() => showDataLayer(true)}>
 					Retry
 					<md-icon slot="icon">refresh</md-icon>
 				</md-filled-button>
 			</div>
 		</Expandable>
 	</div>
-{:else}
+{:else if !dataLayersResponse}
+	<div class="grid py-8 place-items-center">
+		<md-circular-progress four-color indeterminate />
+	</div>
+{:else if dataLayersResponse}
 	<Expandable bind:section={expandedSection} {icon} {title} subtitle={dataLayerOptions[layerId]}>
 		<div class="flex flex-col space-y-2 px-2">
 			<span class="outline-text label-medium">
@@ -192,75 +175,48 @@
 			<Dropdown
 				bind:value={layerId}
 				options={dataLayerOptions}
-				onChange={() => drawDataLayer(layerId, true)}
+				onChange={() => showDataLayer(true)}
 			/>
 
-			{#if dataLayersResponse}
-				{#if layerId == 'none'}
-					<div />
-				{:else if !layer}
-					<div class="p-4">
-						<md-linear-progress indeterminate />
-					</div>
-				{:else}
-					{#if layerId == 'hourlyShade'}
-						<Calendar bind:month bind:day onChange={() => drawDataLayer(layerId)} />
-					{/if}
-
-					<button
-						class="p-2 relative inline-flex items-center"
-						on:click={() => (showPanels = !showPanels)}
-					>
-						<md-switch id="show-panels" role={undefined} selected={showPanels} />
-						<span class="ml-3 body-large">Solar panels</span>
-					</button>
-
-					<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
-						<md-switch
-							id="mask"
-							role={undefined}
-							selected={showRoofOnly}
-							on:click={showRoofOnlyOnChange}
-						/>
-						<span class="ml-3 body-large">Roof only</span>
-					</label>
-
-					{#if ['monthlyFlux', 'hourlyShade'].includes(layerId)}
-						<label for="mask" class="p-2 relative inline-flex items-center cursor-pointer">
-							<md-switch
-								id="mask"
-								role={undefined}
-								selected={playAnimation}
-								on:click={playAnimationOnChange}
-							/>
-							<span class="ml-3 body-large">Play animation</span>
-						</label>
-					{/if}
+			{#if layerId == 'none'}
+				<div />
+			{:else if !layer}
+				<md-linear-progress four-color indeterminate />
+			{:else if layer}
+				{#if layerId == 'hourlyShade'}
+					<Calendar bind:month bind:day onChange={() => showDataLayer()} />
 				{/if}
-				<div class="flex flex-row">
-					<div class="grow" />
-					<md-filled-tonal-button role={undefined} on:click={() => moreDetailsDialog.show()}>
-						More details
-					</md-filled-tonal-button>
-				</div>
 
-				<md-dialog bind:this={moreDetailsDialog}>
-					<div slot="headline">
-						<div class="flex items-center primary-text">
-							<md-icon>{icon}</md-icon>
-							<b>&nbsp;{title}</b>
-						</div>
-					</div>
-					<div slot="content">
-						<Show value={dataLayersResponse} label="dataLayersResponse" />
-					</div>
-					<div slot="actions">
-						<md-text-button role={undefined} on:click={() => moreDetailsDialog.close()}>
-							Close
-						</md-text-button>
-					</div>
-				</md-dialog>
+				<InputBool bind:value={showPanels} label="Solar panels" />
+				<InputBool bind:value={showRoofOnly} label="Roof only" onChange={() => showDataLayer()} />
+
+				{#if ['monthlyFlux', 'hourlyShade'].includes(layerId)}
+					<InputBool bind:value={playAnimation} label="Play animation" />
+				{/if}
 			{/if}
+			<div class="flex flex-row">
+				<div class="grow" />
+				<md-filled-tonal-button role={undefined} on:click={() => moreDetailsDialog.show()}>
+					More details
+				</md-filled-tonal-button>
+			</div>
+
+			<md-dialog bind:this={moreDetailsDialog}>
+				<div slot="headline">
+					<div class="flex items-center primary-text">
+						<md-icon>{icon}</md-icon>
+						<b>&nbsp;{title}</b>
+					</div>
+				</div>
+				<div slot="content">
+					<Show value={dataLayersResponse} label="dataLayersResponse" />
+				</div>
+				<div slot="actions">
+					<md-text-button role={undefined} on:click={() => moreDetailsDialog.close()}>
+						Close
+					</md-text-button>
+				</div>
+			</md-dialog>
 		</div>
 	</Expandable>
 {/if}

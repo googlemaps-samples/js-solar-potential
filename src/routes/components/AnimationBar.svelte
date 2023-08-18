@@ -20,7 +20,7 @@
 
 	export let animationElement: HTMLElement;
 	export let frame: number;
-	export let layer: Layer;
+	export let layer: Layer | null;
 	export let month: number;
 	export let day: number;
 
@@ -72,7 +72,7 @@
 				value-end={monthFrame}
 				on:change={onChangeAnimationSlider}
 			/>
-			<span class="w-8">{monthNames[frame % 12]}</span>
+			<span class="w-8">{monthNames[monthFrame]}</span>
 		</div>
 	{:else if layer.id == 'hourlyShade'}
 		<div

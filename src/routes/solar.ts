@@ -197,17 +197,13 @@ export async function getDataLayerUrls(
 	);
 }
 
-export async function downloadGeoTIFF(
-	layerId: LayerId,
-	url: string,
-	apiKey: string,
-): Promise<GeoTiff> {
-	console.log(`Fetching ${layerId}, url: ${url}`);
+export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoTiff> {
+	console.log(`Downloading data layer: ${url}`);
 	const solarUrl = url.includes('solar.googleapis.com') ? url + `&key=${apiKey}` : url;
 	const response = await fetch(solarUrl);
 	if (response.status != 200) {
 		const error = await response.json();
-		console.error(`downloadGeoTIFF ${layerId}, url: ${url}\n`, error);
+		console.error(`downloadGeoTIFF failed: ${url}\n`, error);
 		throw error;
 	}
 	const arrayBuffer = await response.arrayBuffer();
