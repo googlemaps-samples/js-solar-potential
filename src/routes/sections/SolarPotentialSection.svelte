@@ -325,15 +325,14 @@
 					},
 					{
 						icon: [
-							'battery_alert',
 							'battery_0_bar',
 							'battery_1_bar',
 							'battery_2_bar',
 							'battery_3_bar',
 							'battery_4_bar',
 							'battery_5_bar',
-							'battery_charging_full',
-						][Math.floor(Math.min(energyCovered, 1) * 7)],
+							'battery_full',
+						][Math.floor(Math.min(Math.round(energyCovered * 100) / 100, 1) * 6)],
 						name: 'Energy covered',
 						value: Math.round(energyCovered * 100).toString(),
 						units: '%',
