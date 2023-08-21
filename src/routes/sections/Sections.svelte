@@ -1,9 +1,6 @@
 <script lang="ts">
-	import AnimationBar from '../components/AnimationBar.svelte';
-	import Calendar from '../components/Calendar.svelte';
 	/* global google */
 
-	import type { Layer } from '../layer';
 	import type { BuildingInsightsResponse } from '../solar';
 	import { findSolarConfig } from '../utils';
 	import BuildingInsightsSection from './BuildingInsightsSection.svelte';

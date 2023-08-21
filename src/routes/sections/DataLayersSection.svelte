@@ -34,7 +34,6 @@
 	import InputBool from '../components/InputBool.svelte';
 	import Show from '../components/Show.svelte';
 	import SummaryCard from '../components/SummaryCard.svelte';
-	import AnimationBar from '../components/AnimationBar.svelte';
 	import type { MdSlider } from '@material/web/slider/slider';
 
 	export let expandedSection: string;

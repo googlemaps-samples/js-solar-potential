@@ -20,7 +20,6 @@
 	import { Loader } from '@googlemaps/js-api-loader';
 	import { onMount } from 'svelte';
 
-	import type { Layer } from './layer';
 	import SearchBar from './components/SearchBar.svelte';
 	import Sections from './sections/Sections.svelte';
 
