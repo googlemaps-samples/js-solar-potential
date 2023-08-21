@@ -35,6 +35,16 @@
 	import '@material/web/switch/switch';
 	import '@material/web/textfield/filled-text-field';
 	import '@material/web/textfield/outlined-text-field';
+
+	// https://kit.svelte.dev/docs/configuration#version
+	import { beforeNavigate } from '$app/navigation';
+	import { updated } from '$app/stores';
+
+	beforeNavigate(({ willUnload, to }) => {
+		if ($updated && !willUnload && to?.url) {
+			location.href = to.url.href;
+		}
+	});
 </script>
 
 <svelte:head>
