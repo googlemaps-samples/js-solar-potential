@@ -12,7 +12,7 @@
 	}
 </script>
 
-<label for="switch" class="p-2 relative inline-flex items-center cursor-pointer">
-	<md-switch id="switch" role={undefined} selected={value} on:click={onClick} />
+<label for={label} class="p-2 relative inline-flex items-center cursor-pointer">
+	<md-switch id={label} role={undefined} selected={value} on:click={onClick} />
 	<span class="ml-3 body-large">{label}</span>
 </label>

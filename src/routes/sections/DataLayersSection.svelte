@@ -34,13 +34,11 @@
 	import InputBool from '../components/InputBool.svelte';
 	import Show from '../components/Show.svelte';
 	import SummaryCard from '../components/SummaryCard.svelte';
+	import AnimationBar from '../components/AnimationBar.svelte';
+	import type { MdSlider } from '@material/web/slider/slider';
 
 	export let expandedSection: string;
 	export let showPanels = true;
-	export let frame: number;
-	export let layer: Layer | null;
-	export let month: number;
-	export let day: number;
 
 	export let googleMapsApiKey: string;
 	export let buildingInsights: BuildingInsightsResponse;
@@ -60,25 +58,48 @@
 		hourlyShade: 'Hourly shade',
 	};
 
+	const monthNames = [
+		'Jan',
+		'Feb',
+		'Mar',
+		'Apr',
+		'May',
+		'Jun',
+		'Jul',
+		'Aug',
+		'Sep',
+		'Oct',
+		'Nov',
+		'Dec',
+	];
+
 	let dataLayersResponse: DataLayersResponse | undefined;
 	let requestError: RequestError | undefined;
-	let moreDetailsDialog: MdDialog;
+	let apiResponseDialog: MdDialog;
 	let layerId: LayerId | 'none' = 'monthlyFlux';
+	let layer: Layer | undefined;
+
+	let playAnimation = true;
+	let tick = 0;
+	let month = 0;
+	let day = 14;
+	let hour = 0;
 
 	let overlays: google.maps.GroundOverlay[] = [];
 	let showRoofOnly = false;
-	let playAnimation = true;
 	async function showDataLayer(reset = false) {
 		if (reset) {
 			dataLayersResponse = undefined;
 			requestError = undefined;
-			layer = null;
+			layer = undefined;
 
 			// Default values per layer.
 			showRoofOnly = ['annualFlux', 'monthlyFlux', 'hourlyShade'].includes(layerId);
 			map.setMapTypeId(layerId == 'rgb' ? 'roadmap' : 'satellite');
 			overlays.map((overlay) => overlay.setMap(null));
-			frame = layerId == 'hourlyShade' ? 5 : 0;
+			month = layerId == 'hourlyShade' ? 3 : 0;
+			day = 14;
+			hour = 5;
 			playAnimation = ['monthlyFlux', 'hourlyShade'].includes(layerId);
 		}
 		if (layerId == 'none') {
@@ -126,18 +147,52 @@
 		}
 	}
 
-	$: if (layer && playAnimation) {
-		if (layer.id == 'monthlyFlux') {
-			overlays.map((overlay, i) => overlay.setMap(i == frame % 12 ? map : null));
-		} else if (layer.id == 'hourlyShade') {
-			overlays.map((overlay, i) => overlay.setMap(i == frame % 24 ? map : null));
+	$: if (layer?.id == 'monthlyFlux') {
+		overlays.map((overlay, i) => overlay.setMap(i == month ? map : null));
+	} else if (layer?.id == 'hourlyShade') {
+		overlays.map((overlay, i) => overlay.setMap(i == hour ? map : null));
+	}
+
+	function onSliderChange(event: Event) {
+		const target = event.target as MdSlider;
+		if (layer?.id == 'monthlyFlux') {
+			if (target.valueStart != month) {
+				month = target.valueStart ?? 0;
+			} else if (target.valueEnd != month) {
+				month = target.valueEnd ?? 0;
+			}
+			tick = month;
+		} else if (layer?.id == 'hourlyShade') {
+			if (target.valueStart != hour) {
+				hour = target.valueStart ?? 0;
+			} else if (target.valueEnd != hour) {
+				hour = target.valueEnd ?? 0;
+			}
+			tick = hour;
 		}
 	}
 
-	let stopFrame = 0;
-	$: frame, (frame = playAnimation ? frame : stopFrame);
+	$: if (layer?.id == 'monthlyFlux') {
+		if (playAnimation) {
+			month = tick % 12;
+		} else {
+			tick = month;
+		}
+	} else if (layer?.id == 'hourlyShade') {
+		if (playAnimation) {
+			hour = tick % 24;
+		} else {
+			tick = hour;
+		}
+	}
 
-	onMount(() => showDataLayer(true));
+	onMount(() => {
+		showDataLayer(true);
+
+		setInterval(() => {
+			tick++;
+		}, 1000);
+	});
 </script>
 
 {#if requestError}
@@ -160,11 +215,7 @@
 			</div>
 		</Expandable>
 	</div>
-{:else if !dataLayersResponse}
-	<div class="grid py-8 place-items-center">
-		<md-circular-progress four-color indeterminate />
-	</div>
-{:else if dataLayersResponse}
+{:else}
 	<Expandable bind:section={expandedSection} {icon} {title} subtitle={dataLayerOptions[layerId]}>
 		<div class="flex flex-col space-y-2 px-2">
 			<span class="outline-text label-medium">
@@ -175,16 +226,16 @@
 			<Dropdown
 				bind:value={layerId}
 				options={dataLayerOptions}
-				onChange={() => showDataLayer(true)}
+				onChange={async () => showDataLayer(true)}
 			/>
 
 			{#if layerId == 'none'}
 				<div />
 			{:else if !layer}
 				<md-linear-progress four-color indeterminate />
-			{:else if layer}
-				{#if layerId == 'hourlyShade'}
-					<Calendar bind:month bind:day onChange={() => showDataLayer()} />
+			{:else}
+				{#if layer.id == 'hourlyShade'}
+					<Calendar bind:month bind:day onChange={async () => showDataLayer()} />
 				{/if}
 
 				<InputBool bind:value={showPanels} label="Solar panels" />
@@ -196,12 +247,12 @@
 			{/if}
 			<div class="flex flex-row">
 				<div class="grow" />
-				<md-filled-tonal-button role={undefined} on:click={() => moreDetailsDialog.show()}>
-					More details
+				<md-filled-tonal-button role={undefined} on:click={() => apiResponseDialog.show()}>
+					API response
 				</md-filled-tonal-button>
 			</div>
 
-			<md-dialog bind:this={moreDetailsDialog}>
+			<md-dialog bind:this={apiResponseDialog}>
 				<div slot="headline">
 					<div class="flex items-center primary-text">
 						<md-icon>{icon}</md-icon>
@@ -212,7 +263,7 @@
 					<Show value={dataLayersResponse} label="dataLayersResponse" />
 				</div>
 				<div slot="actions">
-					<md-text-button role={undefined} on:click={() => moreDetailsDialog.close()}>
+					<md-text-button role={undefined} on:click={() => apiResponseDialog.close()}>
 						Close
 					</md-text-button>
 				</div>
@@ -275,4 +326,52 @@
 			</SummaryCard>
 		</div>
 	{/if}
+</div>
+
+<div class="absolute bottom-6 left-0 w-full">
+	<div class="md:mr-96 mr-80 grid place-items-center">
+		{#if layer}
+			<div
+				class="flex items-center surface on-surface-text pr-4 text-center label-large rounded-full shadow-md"
+			>
+				{#if layer.id == 'monthlyFlux'}
+					<md-slider
+						range
+						min={0}
+						max={11}
+						value-start={month}
+						value-end={month}
+						on:input={onSliderChange}
+					/>
+					<span class="w-8">{monthNames[month]}</span>
+				{:else if layer.id == 'hourlyShade'}
+					<md-slider
+						range
+						min={0}
+						max={23}
+						value-start={hour}
+						value-end={hour}
+						on:input={onSliderChange}
+					/>
+					<span class="w-24 whitespace-nowrap">
+						{monthNames[month]}
+						{day},
+						{#if hour == 0}
+							12am
+						{:else if hour < 10}
+							{hour}am
+						{:else if hour < 12}
+							{hour}am
+						{:else if hour == 12}
+							12pm
+						{:else if hour < 22}
+							{hour - 12}pm
+						{:else}
+							{hour - 12}pm
+						{/if}
+					</span>
+				{/if}
+			</div>
+		{/if}
+	</div>
 </div>

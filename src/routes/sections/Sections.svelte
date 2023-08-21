@@ -1,16 +1,14 @@
 <script lang="ts">
+	import AnimationBar from '../components/AnimationBar.svelte';
+	import Calendar from '../components/Calendar.svelte';
 	/* global google */
 
 	import type { Layer } from '../layer';
 	import type { BuildingInsightsResponse } from '../solar';
+	import { findSolarConfig } from '../utils';
 	import BuildingInsightsSection from './BuildingInsightsSection.svelte';
 	import DataLayersSection from './DataLayersSection.svelte';
 	import SolarPotentialSection from './SolarPotentialSection.svelte';
-
-	export let frame: number;
-	export let layer: Layer | null;
-	export let month: number;
-	export let day: number;
 
 	export let location: google.maps.LatLng;
 	export let map: google.maps.Map;
@@ -20,7 +18,7 @@
 	let buildingInsights: BuildingInsightsResponse | undefined;
 
 	// State
-	let expandedSection: string = 'Solar Potential analysis';
+	let expandedSection: string = '';
 	let showPanels = true;
 
 	// User settings
@@ -29,16 +27,19 @@
 	let energyCostPerKwh = 0.31;
 	let dcToAcDerate = 0.85;
 
-	// Calculations
-	let yearlyEnergyUse: number;
-	$: yearlyEnergyUse = (monthlyAverageEnergyBill / energyCostPerKwh) * 12;
+	// Find the config that covers the yearly energy consumption.
+	let yearlyKwhEnergyConsumption: number;
+	$: yearlyKwhEnergyConsumption = (monthlyAverageEnergyBill / energyCostPerKwh) * 12;
 
 	let configId: number | undefined;
 	$: if (configId === undefined && buildingInsights) {
 		const defaultPanelCapacity = buildingInsights.solarPotential.panelCapacityWatts;
 		const panelCapacityRatio = panelCapacityWatts / defaultPanelCapacity;
-		configId = buildingInsights.solarPotential.solarPanelConfigs.findIndex(
-			(config) => config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyEnergyUse,
+		configId = findSolarConfig(
+			buildingInsights.solarPotential.solarPanelConfigs,
+			yearlyKwhEnergyConsumption,
+			panelCapacityRatio,
+			dcToAcDerate,
 		);
 	}
 </script>
@@ -63,10 +64,6 @@
 		<DataLayersSection
 			bind:expandedSection
 			bind:showPanels
-			bind:frame
-			bind:layer
-			bind:month
-			bind:day
 			{googleMapsApiKey}
 			{buildingInsights}
 			{geometryLibrary}

@@ -18,16 +18,10 @@
 	import type { MdSlider } from '@material/web/slider/slider';
 	import type { Layer } from '../layer';
 
-	export let animationElement: HTMLElement;
-	export let frame: number;
-	export let layer: Layer | null;
+	export let layer: Layer;
 	export let month: number;
 	export let day: number;
-
-	let monthFrame = 0;
-	$: monthFrame = frame % 12;
-	let hourFrame = 0;
-	$: hourFrame = frame % 24;
+	export let hour: number;
 
 	const monthNames = [
 		'Jan',
@@ -44,19 +38,22 @@
 		'Dec',
 	];
 
-	function onChangeAnimationSlider(event: Event) {
+	function onChange(event: Event) {
 		const target = event.target as MdSlider;
-		if (target.valueStart != frame) {
-			frame = target.valueStart ?? 0;
-			target.valueStart = frame;
-		} else {
-			frame = target.valueEnd ?? 0;
-			target.valueEnd = frame;
+		switch (layer.id) {
 		}
+
+		// if (target.valueStart != tick) {
+		// 	tick = target.valueStart ?? 0;
+		// 	target.valueStart = tick;
+		// } else {
+		// 	tick = target.valueEnd ?? 0;
+		// 	target.valueEnd = tick;
+		// }
 	}
 </script>
 
-<div bind:this={animationElement} class="mb-5 p-2 lg:w-96 w-80">
+<div class="mb-5 p-2 lg:w-96 w-80">
 	{#if !layer}
 		<div />
 	{:else if layer.id == 'monthlyFlux'}
@@ -68,11 +65,11 @@
 				min={0}
 				max={11}
 				range={true}
-				value-start={monthFrame}
-				value-end={monthFrame}
-				on:change={onChangeAnimationSlider}
+				value-start={tick % 12}
+				value-end={tick % 12}
+				on:change={onChange}
 			/>
-			<span class="w-8">{monthNames[monthFrame]}</span>
+			<span class="w-8">{monthNames[tick % 12]}</span>
 		</div>
 	{:else if layer.id == 'hourlyShade'}
 		<div
@@ -83,25 +80,25 @@
 				min={0}
 				max={23}
 				range={true}
-				value-start={hourFrame}
-				value-end={hourFrame}
-				on:change={onChangeAnimationSlider}
+				value-start={tick % 24}
+				value-end={tick % 24}
+				on:change={onChange}
 			/>
 			<span class="w-24 whitespace-nowrap">
 				{monthNames[month]}
 				{day},
-				{#if hourFrame == 0}
+				{#if tick % 24 == 0}
 					12am
-				{:else if hourFrame < 10}
-					{hourFrame}am
-				{:else if hourFrame < 12}
-					{hourFrame}am
-				{:else if hourFrame == 12}
+				{:else if tick % 24 < 10}
+					{tick % 24}am
+				{:else if tick % 24 < 12}
+					{tick % 24}am
+				{:else if tick % 24 == 12}
 					12pm
-				{:else if hourFrame < 22}
-					{hourFrame - 12}pm
+				{:else if tick % 24 < 22}
+					{(tick % 24) - 12}pm
 				{:else}
-					{hourFrame - 12}pm
+					{(tick % 24) - 12}pm
 				{/if}
 			</span>
 		</div>

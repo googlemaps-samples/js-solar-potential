@@ -20,7 +20,6 @@
 	import { Loader } from '@googlemaps/js-api-loader';
 	import { onMount } from 'svelte';
 
-	import AnimationBar from './components/AnimationBar.svelte';
 	import type { Layer } from './layer';
 	import SearchBar from './components/SearchBar.svelte';
 	import Sections from './sections/Sections.svelte';
@@ -33,15 +32,8 @@
 	let location: google.maps.LatLng | undefined;
 	const zoom = 19;
 
-	let mapElement: HTMLElement;
-	let animationElement: HTMLElement;
-
-	let frame = 0;
-	let layer: Layer | null = null;
-	let month: number = 3;
-	let day: number = 14;
-
 	// Initialize app.
+	let mapElement: HTMLElement;
 	let map: google.maps.Map;
 	let geometryLibrary: google.maps.GeometryLibrary;
 	let mapsLibrary: google.maps.MapsLibrary;
@@ -76,11 +68,6 @@
 			streetViewControl: false,
 			zoomControl: false,
 		});
-		map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(animationElement);
-
-		setInterval(() => {
-			frame++;
-		}, 1000);
 	});
 </script>
 
@@ -116,22 +103,16 @@
 			</div>
 
 			{#if location}
-				<Sections
-					bind:frame
-					bind:layer
-					bind:month
-					bind:day
-					{location}
-					{map}
-					{geometryLibrary}
-					{googleMapsApiKey}
-				/>
+				<Sections {location} {map} {geometryLibrary} {googleMapsApiKey} />
 			{/if}
 
 			<div class="grow" />
 
 			<div class="flex flex-col items-center w-full">
-				<md-text-button href="https://github.com/davidcavazos/solar-potential" target="_blank">
+				<md-text-button
+					href="https://github.com/googlemaps-samples/solar-potential"
+					target="_blank"
+				>
 					View code on GitHub
 					<img slot="icon" src="github-mark.svg" alt="GitHub" width="16" height="16" />
 				</md-text-button>
@@ -142,8 +123,4 @@
 			</span>
 		</div>
 	</aside>
-</div>
-
-<div class="absolute">
-	<AnimationBar bind:animationElement bind:frame {layer} {month} {day} />
 </div>

@@ -13,12 +13,12 @@ export function showMoney(amount: number) {
 
 export function findSolarConfig(
 	solarPanelConfigs: SolarPanelConfig[],
-	yearlyKWhEnergyConsumption: number,
+	yearlyKwhEnergyConsumption: number,
 	panelCapacityRatio: number,
 	dcToAcDerate: number,
 ) {
 	return solarPanelConfigs.findIndex(
 		(config) =>
-			config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyKWhEnergyConsumption,
+			config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyKwhEnergyConsumption,
 	);
 }

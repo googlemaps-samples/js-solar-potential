@@ -60,37 +60,37 @@
 
 	// Calculations
 	let installationCostTotal: number;
-	$: installationCostTotal = installationCostPerWatt * installationSizeKWh * 1000;
+	$: installationCostTotal = installationCostPerWatt * installationSizeKw * 1000;
 
 	let costChart: HTMLElement;
 	let showAdvancedSettings = false;
 
-	let installationSizeKWh: number;
+	let installationSizeKw: number;
 	$: if (solarPanelConfigs[configId]) {
-		installationSizeKWh = (solarPanelConfigs[configId].panelsCount * panelCapacityWatts) / 1000;
+		installationSizeKw = (solarPanelConfigs[configId].panelsCount * panelCapacityWatts) / 1000;
 	}
 
-	let monthlyKWhEnergyConsumption: number;
-	$: monthlyKWhEnergyConsumption = monthlyAverageEnergyBill / energyCostPerKwh;
+	let monthlyKwhEnergyConsumption: number;
+	$: monthlyKwhEnergyConsumption = monthlyAverageEnergyBill / energyCostPerKwh;
 
-	let yearlyKWhEnergyConsumption: number;
-	$: yearlyKWhEnergyConsumption = monthlyKWhEnergyConsumption * 12;
+	let yearlyKwhEnergyConsumption: number;
+	$: yearlyKwhEnergyConsumption = monthlyKwhEnergyConsumption * 12;
 
-	let initialAcKWhPerYear: number;
+	let initialAcKwhPerYear: number;
 	$: if (solarPanelConfigs[configId]) {
-		initialAcKWhPerYear =
+		initialAcKwhPerYear =
 			solarPanelConfigs[configId].yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate;
 	}
 
-	let yearlyProductionAcKWh: number[];
-	$: yearlyProductionAcKWh = [...Array(installationLifeSpan).keys()].map(
-		(year) => initialAcKWhPerYear * efficiencyDepreciationFactor ** year,
+	let yearlyProductionAcKwh: number[];
+	$: yearlyProductionAcKwh = [...Array(installationLifeSpan).keys()].map(
+		(year) => initialAcKwhPerYear * efficiencyDepreciationFactor ** year,
 	);
 
 	let yearlyUtilityBillEstimates: number[];
-	$: yearlyUtilityBillEstimates = yearlyProductionAcKWh.map((yearlyKWhEnergyProduced, year) =>
+	$: yearlyUtilityBillEstimates = yearlyProductionAcKwh.map((yearlyKwhEnergyProduced, year) =>
 		Math.max(
-			((yearlyKWhEnergyConsumption - yearlyKWhEnergyProduced) *
+			((yearlyKwhEnergyConsumption - yearlyKwhEnergyProduced) *
 				energyCostPerKwh *
 				costIncreaseFactor ** year) /
 				discountRate ** year,
@@ -115,7 +115,7 @@
 	$: savings = costOfElectricityWithoutSolar - totalCostWithSolar;
 
 	let energyCovered: number;
-	$: energyCovered = yearlyProductionAcKWh[0] / yearlyKWhEnergyConsumption;
+	$: energyCovered = yearlyProductionAcKwh[0] / yearlyKwhEnergyConsumption;
 
 	let breakEvenYear: number = -1;
 	$: GoogleCharts.load(
@@ -163,9 +163,12 @@
 	);
 
 	function updateConfig() {
+		monthlyKwhEnergyConsumption = monthlyAverageEnergyBill / energyCostPerKwh;
+		yearlyKwhEnergyConsumption = monthlyKwhEnergyConsumption * 12;
+		panelCapacityRatio = panelCapacityWatts / defaultPanelCapacityWatts;
 		configId = findSolarConfig(
 			solarPanelConfigs,
-			yearlyKWhEnergyConsumption,
+			yearlyKwhEnergyConsumption,
 			panelCapacityRatio,
 			dcToAcDerate,
 		);
@@ -188,12 +191,19 @@
 			onChange={updateConfig}
 		/>
 
-		<InputPanelsCount bind:configId {solarPanelConfigs} />
+		<div class="inline-flex items-center space-x-2">
+			<div class="grow">
+				<InputPanelsCount bind:configId {solarPanelConfigs} />
+			</div>
+			<md-icon-button role={undefined} on:click={updateConfig}>
+				<md-icon>sync</md-icon>
+			</md-icon-button>
+		</div>
 
 		<InputMoney
 			bind:value={energyCostPerKwh}
 			icon="paid"
-			label="Energy cost per KWh"
+			label="Energy cost per kWh"
 			onChange={updateConfig}
 		/>
 
@@ -273,7 +283,7 @@
 			</div>
 		{/if}
 
-		<div class="grid justify-items-end">
+		<!-- <div class="grid justify-items-end">
 			<md-filled-tonal-button
 				trailing-icon
 				role={undefined}
@@ -283,7 +293,7 @@
 				More details
 				<md-icon slot="icon">open_in_new</md-icon>
 			</md-filled-tonal-button>
-		</div>
+		</div> -->
 	</div>
 </Expandable>
 
@@ -300,13 +310,13 @@
 						value: showNumber(
 							(solarPanelConfigs[configId]?.yearlyEnergyDcKwh ?? 0) * panelCapacityRatio,
 						),
-						units: 'KWh',
+						units: 'kWh',
 					},
 					{
 						icon: 'speed',
 						name: 'Installation size',
-						value: showNumber(installationSizeKWh),
-						units: 'KWh',
+						value: showNumber(installationSizeKw),
+						units: 'kW',
 					},
 					{
 						icon: 'request_quote',
@@ -315,13 +325,15 @@
 					},
 					{
 						icon: [
+							'battery_alert',
+							'battery_0_bar',
 							'battery_1_bar',
 							'battery_2_bar',
 							'battery_3_bar',
 							'battery_4_bar',
 							'battery_5_bar',
 							'battery_charging_full',
-						][Math.floor(Math.min(energyCovered, 1) * 5)],
+						][Math.floor(Math.min(energyCovered, 1) * 7)],
 						name: 'Energy covered',
 						value: Math.round(energyCovered * 100).toString(),
 						units: '%',
@@ -353,7 +365,10 @@
 						{
 							icon: 'balance',
 							name: 'Break even',
-							value: breakEvenYear >= 0 ? breakEvenYear.toString() : '--',
+							value:
+								breakEvenYear >= 0
+									? `${breakEvenYear + new Date().getFullYear() + 1} in ${breakEvenYear + 1}`
+									: '--',
 							units: 'years',
 						},
 					]}

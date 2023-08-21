@@ -24,7 +24,7 @@
 
 	let opened = false;
 
-	const months: Record<string, number> = {
+	const monthDays: Record<string, number> = {
 		January: 31,
 		February: 28,
 		March: 31,
@@ -39,12 +39,10 @@
 		December: 31,
 	};
 
+	const months = Object.keys(monthDays);
+
 	function dayFrom(row: number, col: number) {
 		return row * numCols + col + 1;
-	}
-
-	function monthDays(month: number) {
-		return months[Object.keys(months)[month]];
 	}
 </script>
 
@@ -52,7 +50,7 @@
 	<md-text-button class="w-full" trailing-icon role={undefined} on:click={() => (opened = !opened)}>
 		<div class="flex items-center">
 			<md-icon>event</md-icon>
-			<span>&nbsp; {Object.keys(months)[month]} {day}</span>
+			<span>&nbsp; {months[month]} {day}</span>
 		</div>
 	</md-text-button>
 
@@ -69,10 +67,8 @@
 			<div class="px-4 pb-4">
 				<Dropdown
 					value={month.toString()}
-					options={Object.fromEntries(
-						Object.keys(month).map((month) => [month, months[month].toString()]),
-					)}
-					onChange={(value) => {
+					options={Object.fromEntries(months.map((month, i) => [i.toString(), month]))}
+					onChange={async (value) => {
 						month = Number(value);
 						onChange(month, day);
 					}}
@@ -80,7 +76,7 @@
 			</div>
 
 			<table>
-				{#each [...Array(Math.ceil(monthDays(month) / numCols)).keys()] as row}
+				{#each [...Array(Math.ceil(monthDays[months[month]] / numCols)).keys()] as row}
 					<tr>
 						{#each [...Array(numCols).keys()] as col}
 							<td>
@@ -94,10 +90,10 @@
 										<md-ripple />
 										{dayFrom(row, col)}
 									</button>
-								{:else}
+								{:else if dayFrom(row, col) <= monthDays[months[month]]}
 									<button
 										class="relative w-8 h-8 rounded-full"
-										on:click={() => {
+										on:click={async () => {
 											day = dayFrom(row, col);
 											opened = false;
 											onChange(month, day);

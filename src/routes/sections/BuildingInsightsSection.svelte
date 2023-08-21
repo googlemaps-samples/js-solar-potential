@@ -51,7 +51,7 @@
 
 	let requestSent = false;
 	let requestError: RequestError | undefined;
-	let moreDetailsDialog: MdDialog;
+	let apiResponseDialog: MdDialog;
 
 	let panelConfig: SolarPanelConfig | undefined;
 	$: if (buildingInsights && configId !== undefined) {
@@ -179,12 +179,12 @@
 			<InputBool bind:value={showPanels} label="Solar panels" />
 
 			<div class="grid justify-items-end">
-				<md-filled-tonal-button role={undefined} on:click={() => moreDetailsDialog.show()}>
-					More details
+				<md-filled-tonal-button role={undefined} on:click={() => apiResponseDialog.show()}>
+					API response
 				</md-filled-tonal-button>
 			</div>
 
-			<md-dialog bind:this={moreDetailsDialog}>
+			<md-dialog bind:this={apiResponseDialog}>
 				<div slot="headline">
 					<div class="flex items-center primary-text">
 						<md-icon>{icon}</md-icon>
@@ -195,7 +195,7 @@
 					<Show value={buildingInsights} label="buildingInsightsResponse" />
 				</div>
 				<div slot="actions">
-					<md-text-button role={undefined} on:click={() => moreDetailsDialog.close()}>
+					<md-text-button role={undefined} on:click={() => apiResponseDialog.close()}>
 						Close
 					</md-text-button>
 				</div>
