@@ -281,7 +281,7 @@
 							The building mask image: one bit per pixel saying whether that pixel is considered to
 							be part of a rooftop or not.
 						{:else if layerId == 'dsm'}
-							An image of the DSM (digital surface map) of the region. Values are in meters above
+							An image of the DSM (Digital Surface Model) of the region. Values are in meters above
 							EGM96 geoid (i.e., sea level). Invalid locations (where we don't have data) are stored
 							as -9999.
 						{:else if layerId == 'rgb'}
