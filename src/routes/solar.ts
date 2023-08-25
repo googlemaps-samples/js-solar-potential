@@ -18,7 +18,7 @@ import * as geotiff from 'geotiff';
 import * as geokeysToProj4 from 'geotiff-geokeys-to-proj4';
 import proj4 from 'proj4';
 
-// https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/dataLayers
+// https://developers.google.com/maps/documentation/solar/reference/rest/v1/dataLayers
 export type LayerId = 'mask' | 'dsm' | 'rgb' | 'annualFlux' | 'monthlyFlux' | 'hourlyShade';
 
 export interface DataLayersResponse {
@@ -47,7 +47,7 @@ export interface GeoTiff {
 	bounds: Bounds;
 }
 
-// https://developers.devsite.corp.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest
+// https://developers.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest
 export interface BuildingInsightsResponse {
 	name: string;
 	center: LatLng;
@@ -147,7 +147,7 @@ export function showDate(date: Date) {
 	return `${date.month}/${date.day}/${date.year}`;
 }
 
-// https://developers.devsite.corp.google.com/maps/documentation/solar/requests#make-building
+// https://developers.google.com/maps/documentation/solar/requests#make-building
 export async function findClosestBuilding(
 	location: google.maps.LatLng,
 	apiKey: string,
@@ -171,7 +171,7 @@ export async function findClosestBuilding(
 	);
 }
 
-// https://developers.devsite.corp.google.com/maps/documentation/solar/requests#make-data
+// https://developers.google.com/maps/documentation/solar/requests#make-data
 export async function getDataLayerUrls(
 	location: LatLng,
 	radius_meters: number,
