@@ -109,7 +109,7 @@
 
 			<div class="flex flex-col items-center w-full">
 				<md-text-button
-					href="https://github.com/googlemaps-samples/solar-potential"
+					href="https://github.com/googlemaps-samples/js-solar-potential"
 					target="_blank"
 				>
 					View code on GitHub
