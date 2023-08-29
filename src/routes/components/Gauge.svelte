@@ -16,6 +16,7 @@
 
 <script lang="ts">
 	export let icon: string;
+	export let title: string;
 	export let label: string;
 	export let value: number;
 	export let labelSuffix = '';
@@ -24,7 +25,7 @@
 </script>
 
 <div class="grid place-items-center">
-	<p class="p-2 body-large">Panels count</p>
+	<p class="p-2 body-large">{title}</p>
 	<div class="relative" style="width: 72px; height: 72px">
 		<md-circular-progress {value} {min} {max} style="--md-circular-progress-size: 72px;" />
 		<md-icon-button class="absolute inset-0 m-auto">

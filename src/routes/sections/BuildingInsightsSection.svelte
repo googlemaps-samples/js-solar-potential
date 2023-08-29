@@ -241,6 +241,7 @@
 					<div class="flex justify-around">
 						<Gauge
 							icon="solar_power"
+							title="Panels count"
 							label={showNumber(panelConfig.panelsCount)}
 							labelSuffix={`/ ${showNumber(solarPanels.length)}`}
 							max={solarPanels.length}
@@ -249,6 +250,7 @@
 
 						<Gauge
 							icon="energy_savings_leaf"
+							title="Yearly energy"
 							label={showNumber((panelConfig?.yearlyEnergyDcKwh ?? 0) * panelCapacityRatio)}
 							labelSuffix="KWh"
 							max={buildingInsights.solarPotential.solarPanelConfigs.slice(-1)[0]
