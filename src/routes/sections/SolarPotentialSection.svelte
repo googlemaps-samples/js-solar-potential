@@ -184,6 +184,23 @@
 	secondary
 >
 	<div class="flex flex-col space-y-4 pt-1">
+		<div class="p-4 mb-4 surface-variant outline-text rounded-lg">
+			<p class="relative inline-flex items-center space-x-2">
+				<md-icon class="md:w-6 w-8">info</md-icon>
+				<span>
+					Projections use a
+					<a
+						class="primary-text"
+						href="https://developers.google.com/maps/documentation/solar/calculate-costs-us"
+						target="_blank"
+					>
+						USA financial model
+						<md-icon class="text-sm">open_in_new</md-icon>
+					</a>
+				</span>
+			</p>
+		</div>
+
 		<InputMoney
 			bind:value={monthlyAverageEnergyBill}
 			icon="credit_card"
