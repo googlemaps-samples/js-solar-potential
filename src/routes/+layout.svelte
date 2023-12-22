@@ -50,6 +50,17 @@
 <svelte:head>
 	<title>Solar API demo</title>
 	<meta name="description" content="Solar API demo" />
+
+	<!-- Google tag (gtag.js) -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-ELSHHVFHYD"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){dataLayer.push(arguments);}
+	  gtag('js', new Date());
+	
+	  gtag('config', 'G-ELSHHVFHYD');
+	</script>
+
 </svelte:head>
 
 <main class="surface on-surface-text body-medium flex flex-col w-screen h-screen">
