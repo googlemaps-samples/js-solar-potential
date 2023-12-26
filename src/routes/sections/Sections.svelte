@@ -35,24 +35,24 @@
 	let showPanels = true;
 
 	// User settings
-	let monthlyAverageEnergyBill = 300;
-	let panelCapacityWatts = 250;
-	let energyCostPerKwh = 0.31;
-	let dcToAcDerate = 0.85;
+	let monthlyAverageEnergyBillInput = 300;
+	let panelCapacityWattsInput = 250;
+	let energyCostPerKwhInput = 0.31;
+	let dcToAcDerateInput = 0.85;
 
 	// Find the config that covers the yearly energy consumption.
 	let yearlyKwhEnergyConsumption: number;
-	$: yearlyKwhEnergyConsumption = (monthlyAverageEnergyBill / energyCostPerKwh) * 12;
+	$: yearlyKwhEnergyConsumption = (monthlyAverageEnergyBillInput / energyCostPerKwhInput) * 12;
 
 	let configId: number | undefined;
 	$: if (configId === undefined && buildingInsights) {
 		const defaultPanelCapacity = buildingInsights.solarPotential.panelCapacityWatts;
-		const panelCapacityRatio = panelCapacityWatts / defaultPanelCapacity;
+		const panelCapacityRatio = panelCapacityWattsInput / defaultPanelCapacity;
 		configId = findSolarConfig(
 			buildingInsights.solarPotential.solarPanelConfigs,
 			yearlyKwhEnergyConsumption,
 			panelCapacityRatio,
-			dcToAcDerate,
+			dcToAcDerateInput,
 		);
 	}
 </script>
@@ -63,7 +63,7 @@
 			bind:expandedSection
 			bind:buildingInsights
 			bind:configId
-			bind:panelCapacityWatts
+			bind:panelCapacityWattsInput
 			bind:showPanels
 			{googleMapsApiKey}
 			{geometryLibrary}
@@ -87,10 +87,10 @@
 		<SolarPotentialSection
 			bind:expandedSection
 			bind:configId
-			bind:monthlyAverageEnergyBill
-			bind:energyCostPerKwh
-			bind:panelCapacityWatts
-			bind:dcToAcDerate
+			bind:monthlyAverageEnergyBillInput
+			bind:energyCostPerKwhInput
+			bind:panelCapacityWattsInput
+			bind:dcToAcDerateInput
 			solarPanelConfigs={buildingInsights.solarPotential.solarPanelConfigs}
 			defaultPanelCapacityWatts={buildingInsights.solarPotential.panelCapacityWatts}
 		/>
