@@ -23,6 +23,10 @@ on:
       - main
   workflow_dispatch: # Manual runs
 
+permissions:
+  contents: read # required for actions/checkout
+  
+
 jobs:
   test-build:
     runs-on: ubuntu-latest
