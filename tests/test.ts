@@ -17,5 +17,5 @@
 import { test } from '@playwright/test';
 
 test('root page exists', async ({ page }) => {
-	await page.goto('/');
+  await page.goto('/');
 });
