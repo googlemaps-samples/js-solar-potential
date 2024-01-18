@@ -24,13 +24,13 @@ on:
   workflow_dispatch: # Manual runs
 
 jobs:
-  test-build:
+  run-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
-          node-version: 24
+          node-version: 20
       - run: npm ci
       - run: npx playwright install chromium
       - run: npm run test:unit
