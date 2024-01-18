@@ -40,7 +40,7 @@
 		"geotiff": "^2.0.7",
 		"geotiff-geokeys-to-proj4": "^2022.9.7",
 		"google-charts": "^2.0.0",
-		"postcss": "^8.4.28",
+		"postcss": "^8.4.31",
 		"prettier": "^3.0.2",
 		"prettier-plugin-svelte": "^3.0.3",
 		"proj4": "^2.9.0",
