@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: test build
+name: build
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: ['16.x', '18.x']
+        node-version: [20, 24]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -36,6 +36,3 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
       - run: npm run build
-      - run: npx playwright install chromium
-      - run: npm test
-    

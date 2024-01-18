@@ -14,7 +14,7 @@
  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { test } from '@playwright/test';
 
 test('root page exists', async ({ page }) => {
 	await page.goto('/');
