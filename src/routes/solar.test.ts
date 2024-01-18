@@ -14,8 +14,7 @@
  limitations under the License.
  */
 
-import { test } from 'vitest'
-import { } from './solar'
+import { test } from 'vitest';
+import {} from './solar';
 
-test('import works', () => {
-})
+test('import works', () => {});
