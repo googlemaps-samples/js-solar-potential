@@ -15,9 +15,9 @@
  */
 
 export default {
-  test: {
-    deps: {
-      inline: ['proj4'],
-    },
-  },
+	test: {
+		deps: {
+			inline: ['proj4'],
+		},
+	},
 };
