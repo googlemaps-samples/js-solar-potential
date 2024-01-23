@@ -14,13 +14,7 @@
  limitations under the License.
  */
 
-import * as geotiff from 'geotiff';
-import * as geokeysToProj4 from 'geotiff-geokeys-to-proj4';
-import proj4 from 'proj4';
-
-// https://developers.google.com/maps/documentation/solar/reference/rest/v1/dataLayers
-export type LayerId = 'mask' | 'dsm' | 'rgb' | 'annualFlux' | 'monthlyFlux' | 'hourlyShade';
-
+// [START solar_api_data_types]
 export interface DataLayersResponse {
   imageryDate: Date;
   imageryProcessedDate: Date;
@@ -38,13 +32,6 @@ export interface Bounds {
   south: number;
   east: number;
   west: number;
-}
-
-export interface GeoTiff {
-  width: number;
-  height: number;
-  rasters: Array<number>[];
-  bounds: Bounds;
 }
 
 // https://developers.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest
@@ -138,16 +125,20 @@ export interface RequestError {
     status: string;
   };
 }
+// [END solar_api_data_types]
 
-export function showLatLng(point: LatLng) {
-  return `(${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)})`;
-}
+// https://developers.google.com/maps/documentation/solar/reference/rest/v1/dataLayers
+export type LayerId = 'mask' | 'dsm' | 'rgb' | 'annualFlux' | 'monthlyFlux' | 'hourlyShade';
 
-export function showDate(date: Date) {
-  return `${date.month}/${date.day}/${date.year}`;
-}
-
-// https://developers.google.com/maps/documentation/solar/requests#make-building
+// [START solar_api_building_insights]
+/**
+ * Fetches the building insights information from the Solar API.
+ *   https://developers.google.com/maps/documentation/solar/requests#make-building
+ *
+ * @param  {LatLng} location      Point of interest as latitude longitude.
+ * @param  {string} apiKey        Google Cloud API key.
+ * @return {Promise<DataLayersResponse>}  Building Insights response.
+ */
 export async function findClosestBuilding(
   location: google.maps.LatLng,
   apiKey: string,
@@ -170,17 +161,27 @@ export async function findClosestBuilding(
     },
   );
 }
+// [END solar_api_building_insights]
 
-// https://developers.google.com/maps/documentation/solar/requests#make-data
+// [START solar_api_data_layers]
+/**
+ * Fetches the data layers information from the Solar API.
+ *   https://developers.google.com/maps/documentation/solar/requests#make-data
+ *
+ * @param  {LatLng} location      Point of interest as latitude longitude.
+ * @param  {number} radiusMeters  Radius of the data layer size in meters.
+ * @param  {string} apiKey        Google Cloud API key.
+ * @return {Promise<DataLayersResponse>}  Data Layers response.
+ */
 export async function getDataLayerUrls(
   location: LatLng,
-  radius_meters: number,
+  radiusMeters: number,
   apiKey: string,
 ): Promise<DataLayersResponse> {
   const args = {
     'location.latitude': location.latitude.toFixed(5),
     'location.longitude': location.longitude.toFixed(5),
-    radius_meters: radius_meters.toString(),
+    radius_meters: radiusMeters.toString(),
   };
   console.log('GET dataLayers\n', args);
   const params = new URLSearchParams({ ...args, key: apiKey });
@@ -196,9 +197,35 @@ export async function getDataLayerUrls(
     },
   );
 }
+// [END solar_api_data_layers]
 
+// [START solar_api_data_layer_custom_type]
+export interface GeoTiff {
+  width: number;
+  height: number;
+  rasters: Array<number>[];
+  bounds: Bounds;
+}
+// [END solar_api_data_layer_custom_type]
+
+// [START solar_api_download_geotiff]
+// npm install geotiff geotiff-geokeys-to-proj4 proj4
+
+import * as geotiff from 'geotiff';
+import * as geokeysToProj4 from 'geotiff-geokeys-to-proj4';
+import proj4 from 'proj4';
+
+/**
+ * Downloads the pixel values for a Data Layer URL from the Solar API.
+ *
+ * @param  {string} url        URL from the Data Layers response.
+ * @param  {string} apiKey     Google Cloud API key.
+ * @return {Promise<GeoTiff>}  Pixel values with shape and lat/lon bounds.
+ */
 export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoTiff> {
   console.log(`Downloading data layer: ${url}`);
+
+  // Include your Google Cloud API key in the Data Layers URL.
   const solarUrl = url.includes('solar.googleapis.com') ? url + `&key=${apiKey}` : url;
   const response = await fetch(solarUrl);
   if (response.status != 200) {
@@ -206,12 +233,14 @@ export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoT
     console.error(`downloadGeoTIFF failed: ${url}\n`, error);
     throw error;
   }
+
+  // Get the GeoTIFF rasters, which are the pixel values for each band.
   const arrayBuffer = await response.arrayBuffer();
   const tiff = await geotiff.fromArrayBuffer(arrayBuffer);
   const image = await tiff.getImage();
   const rasters = await image.readRasters();
 
-  // Reproject the bounding box into coordinates.
+  // Reproject the bounding box into lat/lon coordinates.
   const geoKeys = image.getGeoKeys();
   const projObj = geokeysToProj4.toProj4(geoKeys);
   const projection = proj4(projObj.proj4, 'WGS84');
@@ -226,11 +255,18 @@ export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoT
   });
 
   return {
+    // Width and height of the data layer image in pixels.
+    // Used to know the row and column since Javascript
+    // stores the values as flat arrays.
     width: rasters.width,
     height: rasters.height,
+    // Each raster reprents the pixel values of each band.
+    // We convert them from `geotiff.TypedArray`s into plain
+    // Javascript arrays to make them easier to process.
     rasters: [...Array(rasters.length).keys()].map((i) =>
       Array.from(rasters[i] as geotiff.TypedArray),
     ),
+    // The bounding box as a lat/lon rectangle.
     bounds: {
       north: ne.y,
       south: sw.y,
@@ -238,4 +274,13 @@ export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoT
       west: sw.x,
     },
   };
+}
+// [END solar_api_download_geotiff]
+
+export function showLatLng(point: LatLng) {
+  return `(${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)})`;
+}
+
+export function showDate(date: Date) {
+  return `${date.month}/${date.day}/${date.year}`;
 }

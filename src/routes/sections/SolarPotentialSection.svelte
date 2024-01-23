@@ -36,83 +36,108 @@
 
   export let expandedSection: string;
   export let configId: number;
-  export let monthlyAverageEnergyBill: number;
-  export let energyCostPerKwh: number;
-  export let panelCapacityWatts: number;
-  export let dcToAcDerate: number;
+  export let monthlyAverageEnergyBillInput: number;
+  export let energyCostPerKwhInput: number;
+  export let panelCapacityWattsInput: number;
+  export let dcToAcDerateInput: number;
   export let solarPanelConfigs: SolarPanelConfig[];
   export let defaultPanelCapacityWatts: number;
 
   const icon = 'payments';
   const title = 'Solar Potential analysis';
 
+  let costChart: HTMLElement;
+  let showAdvancedSettings = false;
+
+  // [START solar_potential_calculations]
+  // Solar configuration, from buildingInsights.solarPotential.solarPanelConfigs
+  let panelsCount = 20;
+  let yearlyEnergyDcKwh = 12000;
+
   // Basic settings
-  let panelCapacityRatio = 1.0;
-  $: panelCapacityRatio = panelCapacityWatts / defaultPanelCapacityWatts;
+  let monthlyAverageEnergyBill: number = 300;
+  let energyCostPerKwh = 0.31;
+  let panelCapacityWatts = 400;
   let solarIncentives: number = 7000;
   let installationCostPerWatt: number = 4.0;
-  let installationLifeSpan = 20;
+  let installationLifeSpan: number = 20;
 
   // Advanced settings
+  let dcToAcDerate = 0.85;
   let efficiencyDepreciationFactor = 0.995;
   let costIncreaseFactor = 1.022;
   let discountRate = 1.04;
 
-  // Calculations
-  let installationCostTotal: number;
-  $: installationCostTotal = installationCostPerWatt * installationSizeKw * 1000;
+  // Solar installation
+  let installationSizeKw: number = (panelsCount * panelCapacityWatts) / 1000;
+  let installationCostTotal: number = installationCostPerWatt * installationSizeKw * 1000;
 
-  let costChart: HTMLElement;
-  let showAdvancedSettings = false;
+  // Energy consumption
+  let monthlyKwhEnergyConsumption: number = monthlyAverageEnergyBill / energyCostPerKwh;
+  let yearlyKwhEnergyConsumption: number = monthlyKwhEnergyConsumption * 12;
 
-  let installationSizeKw: number;
-  $: if (solarPanelConfigs[configId]) {
-    installationSizeKw = (solarPanelConfigs[configId].panelsCount * panelCapacityWatts) / 1000;
-  }
-
-  let monthlyKwhEnergyConsumption: number;
-  $: monthlyKwhEnergyConsumption = monthlyAverageEnergyBill / energyCostPerKwh;
-
-  let yearlyKwhEnergyConsumption: number;
-  $: yearlyKwhEnergyConsumption = monthlyKwhEnergyConsumption * 12;
-
-  let initialAcKwhPerYear: number;
-  $: if (solarPanelConfigs[configId]) {
-    initialAcKwhPerYear =
-      solarPanelConfigs[configId].yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate;
-  }
-
-  let yearlyProductionAcKwh: number[];
-  $: yearlyProductionAcKwh = [...Array(installationLifeSpan).keys()].map(
+  // Energy produced for installation life span
+  let initialAcKwhPerYear: number = yearlyEnergyDcKwh * dcToAcDerate;
+  let yearlyProductionAcKwh: number[] = [...Array(installationLifeSpan).keys()].map(
     (year) => initialAcKwhPerYear * efficiencyDepreciationFactor ** year,
   );
 
-  let yearlyUtilityBillEstimates: number[];
-  $: yearlyUtilityBillEstimates = yearlyProductionAcKwh.map((yearlyKwhEnergyProduced, year) =>
-    Math.max(
-      ((yearlyKwhEnergyConsumption - yearlyKwhEnergyProduced) *
-        energyCostPerKwh *
-        costIncreaseFactor ** year) /
-        discountRate ** year,
-      0,
-    ),
+  // Cost with solar for installation life span
+  let yearlyUtilityBillEstimates: number[] = yearlyProductionAcKwh.map(
+    (yearlyKwhEnergyProduced, year) => {
+      const billEnergyKwh = yearlyKwhEnergyConsumption - yearlyKwhEnergyProduced;
+      const billEstimate =
+        (billEnergyKwh * energyCostPerKwh * costIncreaseFactor ** year) / discountRate ** year;
+      return Math.max(billEstimate, 0); // bill cannot be negative
+    },
   );
+  let remainingLifetimeUtilityBill: number = yearlyUtilityBillEstimates.reduce((x, y) => x + y, 0);
+  let totalCostWithSolar: number =
+    installationCostTotal + remainingLifetimeUtilityBill - solarIncentives;
+  console.log(`Cost with solar: $${totalCostWithSolar.toFixed(2)}`);
 
-  let remainingLifetimeUtilityBill: number;
-  $: remainingLifetimeUtilityBill = yearlyUtilityBillEstimates.reduce((x, y) => x + y, 0);
-
-  let costOfElectricityWithoutSolar: number;
-  let yearlyCostWithoutSolar: number[];
-  $: yearlyCostWithoutSolar = [...Array(installationLifeSpan).keys()].map(
+  // Cost without solar for installation life span
+  let yearlyCostWithoutSolar: number[] = [...Array(installationLifeSpan).keys()].map(
     (year) => (monthlyAverageEnergyBill * 12 * costIncreaseFactor ** year) / discountRate ** year,
   );
-  $: costOfElectricityWithoutSolar = yearlyCostWithoutSolar.reduce((x, y) => x + y, 0);
+  let totalCostWithoutSolar: number = yearlyCostWithoutSolar.reduce((x, y) => x + y, 0);
+  console.log(`Cost without solar: $${totalCostWithoutSolar.toFixed(2)}`);
 
-  let totalCostWithSolar: number;
+  // Savings with solar for installation life span
+  let savings: number = totalCostWithoutSolar - totalCostWithSolar;
+  console.log(`Savings: $${savings.toFixed(2)} in ${installationLifeSpan} years`);
+  // [END solar_potential_calculations]
+
+  // Reactive calculations
+  let panelCapacityRatio: number = 1.0;
+  $: panelCapacityRatio = panelCapacityWattsInput / defaultPanelCapacityWatts;
+  $: installationCostTotal = installationCostPerWatt * installationSizeKw * 1000;
+  $: if (solarPanelConfigs[configId]) {
+    installationSizeKw = (solarPanelConfigs[configId].panelsCount * panelCapacityWattsInput) / 1000;
+  }
+  $: monthlyKwhEnergyConsumption = monthlyAverageEnergyBillInput / energyCostPerKwhInput;
+  $: yearlyKwhEnergyConsumption = monthlyKwhEnergyConsumption * 12;
+  $: if (solarPanelConfigs[configId]) {
+    initialAcKwhPerYear =
+      solarPanelConfigs[configId].yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerateInput;
+  }
+  $: yearlyProductionAcKwh = [...Array(installationLifeSpan).keys()].map(
+    (year) => initialAcKwhPerYear * efficiencyDepreciationFactor ** year,
+  );
+  $: yearlyUtilityBillEstimates = yearlyProductionAcKwh.map((yearlyKwhEnergyProduced, year) => {
+    const billEnergyKwh = yearlyKwhEnergyConsumption - yearlyKwhEnergyProduced;
+    const billEstimate =
+      (billEnergyKwh * energyCostPerKwhInput * costIncreaseFactor ** year) / discountRate ** year;
+    return Math.max(billEstimate, 0); // bill cannot be negative
+  });
+  $: remainingLifetimeUtilityBill = yearlyUtilityBillEstimates.reduce((x, y) => x + y, 0);
   $: totalCostWithSolar = installationCostTotal + remainingLifetimeUtilityBill - solarIncentives;
-
-  let savings: number;
-  $: savings = costOfElectricityWithoutSolar - totalCostWithSolar;
+  $: yearlyCostWithoutSolar = [...Array(installationLifeSpan).keys()].map(
+    (year) =>
+      (monthlyAverageEnergyBillInput * 12 * costIncreaseFactor ** year) / discountRate ** year,
+  );
+  $: totalCostWithoutSolar = yearlyCostWithoutSolar.reduce((x, y) => x + y, 0);
+  $: savings = totalCostWithoutSolar - totalCostWithSolar;
 
   let energyCovered: number;
   $: energyCovered = yearlyProductionAcKwh[0] / yearlyKwhEnergyConsumption;
@@ -163,14 +188,14 @@
   );
 
   function updateConfig() {
-    monthlyKwhEnergyConsumption = monthlyAverageEnergyBill / energyCostPerKwh;
+    monthlyKwhEnergyConsumption = monthlyAverageEnergyBillInput / energyCostPerKwhInput;
     yearlyKwhEnergyConsumption = monthlyKwhEnergyConsumption * 12;
-    panelCapacityRatio = panelCapacityWatts / defaultPanelCapacityWatts;
+    panelCapacityRatio = panelCapacityWattsInput / defaultPanelCapacityWatts;
     configId = findSolarConfig(
       solarPanelConfigs,
       yearlyKwhEnergyConsumption,
       panelCapacityRatio,
-      dcToAcDerate,
+      dcToAcDerateInput,
     );
   }
 </script>
@@ -202,7 +227,7 @@
     </div>
 
     <InputMoney
-      bind:value={monthlyAverageEnergyBill}
+      bind:value={monthlyAverageEnergyBillInput}
       icon="credit_card"
       label="Monthly average energy bill"
       onChange={updateConfig}
@@ -218,7 +243,7 @@
     </div>
 
     <InputMoney
-      bind:value={energyCostPerKwh}
+      bind:value={energyCostPerKwhInput}
       icon="paid"
       label="Energy cost per kWh"
       onChange={updateConfig}
@@ -239,7 +264,7 @@
     />
 
     <InputNumber
-      bind:value={panelCapacityWatts}
+      bind:value={panelCapacityWattsInput}
       icon="bolt"
       label="Panel capacity"
       suffix="Watts"
@@ -270,7 +295,7 @@
         />
 
         <InputPercent
-          bind:value={dcToAcDerate}
+          bind:value={dcToAcDerateInput}
           icon="dynamic_form"
           label="DC to AC conversion "
           onChange={updateConfig}
@@ -366,7 +391,7 @@
             {
               icon: 'wallet',
               name: 'Cost without solar',
-              value: showMoney(costOfElectricityWithoutSolar),
+              value: showMoney(totalCostWithoutSolar),
             },
             {
               icon: 'wb_sunny',
