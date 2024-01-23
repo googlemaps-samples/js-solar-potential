@@ -201,10 +201,10 @@ export async function getDataLayerUrls(
 
 // [START solar_api_data_layer_custom_type]
 export interface GeoTiff {
-	width: number;
-	height: number;
-	rasters: Array<number>[];
-	bounds: Bounds;
+  width: number;
+  height: number;
+  rasters: Array<number>[];
+  bounds: Bounds;
 }
 // [END solar_api_data_layer_custom_type]
 
@@ -278,9 +278,9 @@ export async function downloadGeoTIFF(url: string, apiKey: string): Promise<GeoT
 // [END solar_api_download_geotiff]
 
 export function showLatLng(point: LatLng) {
-	return `(${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)})`;
+  return `(${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)})`;
 }
 
 export function showDate(date: Date) {
-	return `${date.month}/${date.day}/${date.year}`;
+  return `${date.month}/${date.day}/${date.year}`;
 }

@@ -69,7 +69,7 @@
   let discountRate = 1.04;
 
   // Solar installation
-  let installationSizeKw: number = panelsCount * panelCapacityWatts / 1000;
+  let installationSizeKw: number = (panelsCount * panelCapacityWatts) / 1000;
   let installationCostTotal: number = installationCostPerWatt * installationSizeKw * 1000;
 
   // Energy consumption
@@ -83,25 +83,29 @@
   );
 
   // Cost with solar for installation life span
-  let yearlyUtilityBillEstimates: number[] = yearlyProductionAcKwh.map((yearlyKwhEnergyProduced, year) => {
-        const billEnergyKwh = yearlyKwhEnergyConsumption - yearlyKwhEnergyProduced;
-        const billEstimate = (billEnergyKwh * energyCostPerKwh * costIncreaseFactor ** year) / discountRate ** year;
-    return Math.max(billEstimate, 0); // bill cannot be negative
-    });
+  let yearlyUtilityBillEstimates: number[] = yearlyProductionAcKwh.map(
+    (yearlyKwhEnergyProduced, year) => {
+      const billEnergyKwh = yearlyKwhEnergyConsumption - yearlyKwhEnergyProduced;
+      const billEstimate =
+        (billEnergyKwh * energyCostPerKwh * costIncreaseFactor ** year) / discountRate ** year;
+      return Math.max(billEstimate, 0); // bill cannot be negative
+    },
+  );
   let remainingLifetimeUtilityBill: number = yearlyUtilityBillEstimates.reduce((x, y) => x + y, 0);
-  let totalCostWithSolar: number = installationCostTotal + remainingLifetimeUtilityBill - solarIncentives;
-    console.log(`Cost with solar: \$${totalCostWithSolar.toFixed(2)}`)
+  let totalCostWithSolar: number =
+    installationCostTotal + remainingLifetimeUtilityBill - solarIncentives;
+  console.log(`Cost with solar: $${totalCostWithSolar.toFixed(2)}`);
 
   // Cost without solar for installation life span
   let yearlyCostWithoutSolar: number[] = [...Array(installationLifeSpan).keys()].map(
     (year) => (monthlyAverageEnergyBill * 12 * costIncreaseFactor ** year) / discountRate ** year,
   );
   let totalCostWithoutSolar: number = yearlyCostWithoutSolar.reduce((x, y) => x + y, 0);
-    console.log(`Cost without solar: \$${totalCostWithoutSolar.toFixed(2)}`)
+  console.log(`Cost without solar: $${totalCostWithoutSolar.toFixed(2)}`);
 
   // Savings with solar for installation life span
   let savings: number = totalCostWithoutSolar - totalCostWithSolar;
-    console.log(`Savings: \$${savings.toFixed(2)} in ${installationLifeSpan} years`)
+  console.log(`Savings: $${savings.toFixed(2)} in ${installationLifeSpan} years`);
   // [END solar_potential_calculations]
 
   // Reactive calculations
@@ -109,7 +113,7 @@
   $: panelCapacityRatio = panelCapacityWattsInput / defaultPanelCapacityWatts;
   $: installationCostTotal = installationCostPerWatt * installationSizeKw * 1000;
   $: if (solarPanelConfigs[configId]) {
-    installationSizeKw = solarPanelConfigs[configId].panelsCount * panelCapacityWattsInput / 1000;
+    installationSizeKw = (solarPanelConfigs[configId].panelsCount * panelCapacityWattsInput) / 1000;
   }
   $: monthlyKwhEnergyConsumption = monthlyAverageEnergyBillInput / energyCostPerKwhInput;
   $: yearlyKwhEnergyConsumption = monthlyKwhEnergyConsumption * 12;
@@ -121,14 +125,16 @@
     (year) => initialAcKwhPerYear * efficiencyDepreciationFactor ** year,
   );
   $: yearlyUtilityBillEstimates = yearlyProductionAcKwh.map((yearlyKwhEnergyProduced, year) => {
-        const billEnergyKwh = yearlyKwhEnergyConsumption - yearlyKwhEnergyProduced;
-        const billEstimate = (billEnergyKwh * energyCostPerKwhInput * costIncreaseFactor ** year) / discountRate ** year;
+    const billEnergyKwh = yearlyKwhEnergyConsumption - yearlyKwhEnergyProduced;
+    const billEstimate =
+      (billEnergyKwh * energyCostPerKwhInput * costIncreaseFactor ** year) / discountRate ** year;
     return Math.max(billEstimate, 0); // bill cannot be negative
-    });
+  });
   $: remainingLifetimeUtilityBill = yearlyUtilityBillEstimates.reduce((x, y) => x + y, 0);
   $: totalCostWithSolar = installationCostTotal + remainingLifetimeUtilityBill - solarIncentives;
   $: yearlyCostWithoutSolar = [...Array(installationLifeSpan).keys()].map(
-    (year) => (monthlyAverageEnergyBillInput * 12 * costIncreaseFactor ** year) / discountRate ** year,
+    (year) =>
+      (monthlyAverageEnergyBillInput * 12 * costIncreaseFactor ** year) / discountRate ** year,
   );
   $: totalCostWithoutSolar = yearlyCostWithoutSolar.reduce((x, y) => x + y, 0);
   $: savings = totalCostWithoutSolar - totalCostWithSolar;

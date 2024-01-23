@@ -149,7 +149,7 @@ export function createPalette(hexColors: string[]): { r: number; g: number; b: n
   // Map each hex color into an RGB value.
   const rgb = hexColors.map(colorToRGB);
   // Create a palette with 256 colors derived from our rgb colors.
-  const size = 256
+  const size = 256;
   const step = (rgb.length - 1) / (size - 1);
   return Array(size)
     .fill(0)
@@ -221,9 +221,9 @@ export function clamp(x: number, min: number, max: number): number {
 // [END visualize_render_palette]
 
 export function rgbToColor({ r, g, b }: { r: number; g: number; b: number }): string {
-	const f = (x: number) => {
-		const hex = Math.round(x).toString(16);
-		return hex.length == 1 ? `0${hex}` : hex;
-	};
-	return `#${f(r)}${f(g)}${f(b)}`;
+  const f = (x: number) => {
+    const hex = Math.round(x).toString(16);
+    return hex.length == 1 ? `0${hex}` : hex;
+  };
+  return `#${f(r)}${f(g)}${f(b)}`;
 }
