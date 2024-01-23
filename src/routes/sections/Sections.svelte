@@ -63,8 +63,8 @@
       bind:expandedSection
       bind:buildingInsights
       bind:configId
-      bind:panelCapacityWattsInput
       bind:showPanels
+      bind:panelCapacityWatts={panelCapacityWattsInput}
       {googleMapsApiKey}
       {geometryLibrary}
       {location}

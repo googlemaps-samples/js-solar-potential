@@ -93,7 +93,7 @@
 
     // Create the solar panels on the map.
     const solarPotential = buildingInsights.solarPotential;
-    const palette = createPalette(panelsPalette, 256).map(rgbToColor);
+    const palette = createPalette(panelsPalette).map(rgbToColor);
     const minEnergy = solarPotential.solarPanels.slice(-1)[0].yearlyEnergyDcKwh;
     const maxEnergy = solarPotential.solarPanels[0].yearlyEnergyDcKwh;
     solarPanels = solarPotential.solarPanels.map((panel) => {
