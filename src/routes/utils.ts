@@ -17,24 +17,24 @@
 import type { SolarPanelConfig } from './solar';
 
 export function showNumber(x: number) {
-	return x.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return x.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
 export function showMoney(amount: number) {
-	return `$${amount.toLocaleString(undefined, {
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2,
-	})}`;
+  return `$${amount.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 export function findSolarConfig(
-	solarPanelConfigs: SolarPanelConfig[],
-	yearlyKwhEnergyConsumption: number,
-	panelCapacityRatio: number,
-	dcToAcDerate: number,
+  solarPanelConfigs: SolarPanelConfig[],
+  yearlyKwhEnergyConsumption: number,
+  panelCapacityRatio: number,
+  dcToAcDerate: number,
 ) {
-	return solarPanelConfigs.findIndex(
-		(config) =>
-			config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyKwhEnergyConsumption,
-	);
+  return solarPanelConfigs.findIndex(
+    (config) =>
+      config.yearlyEnergyDcKwh * panelCapacityRatio * dcToAcDerate >= yearlyKwhEnergyConsumption,
+  );
 }
