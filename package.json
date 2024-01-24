@@ -23,7 +23,7 @@
     "@material/web": "^1.1.1",
     "@playwright/test": "^1.41.0",
     "@sveltejs/adapter-auto": "^3.1.0",
-    "@sveltejs/adapter-node": "^3.0.1",
+    "@sveltejs/adapter-node": "^3.0.3",
     "@sveltejs/kit": "^2.3.5",
     "@sveltejs/vite-plugin-svelte": "^3.0.1",
     "@types/cookie": "^0.6.0",
