@@ -17,7 +17,9 @@
 <script lang="ts">
   /* global google */
 
-  import { Loader } from '@googlemaps/js-api-loader';
+  import * as GMaps from '@googlemaps/js-api-loader';
+  const { Loader } = GMaps;
+
   import { onMount } from 'svelte';
 
   import SearchBar from './components/SearchBar.svelte';
