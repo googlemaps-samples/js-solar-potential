@@ -17,7 +17,9 @@
 <script lang="ts">
   /* global google */
 
-  import { Loader } from '@googlemaps/js-api-loader';
+  import * as googleMapsLoader from '@googlemaps/js-api-loader';
+  const { Loader } = googleMapsLoader;
+
   import { onMount } from 'svelte';
 
   import SearchBar from './components/SearchBar.svelte';
@@ -40,6 +42,7 @@
   onMount(async () => {
     // Load the Google Maps libraries.
     const loader = new Loader({ apiKey: googleMapsApiKey });
+    
     const libraries = {
       geometry: loader.importLibrary('geometry'),
       maps: loader.importLibrary('maps'),
