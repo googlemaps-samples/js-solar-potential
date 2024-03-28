@@ -77,6 +77,7 @@
   let apiResponseDialog: MdDialog;
   let layerId: LayerId | 'none' = 'monthlyFlux';
   let layer: Layer | undefined;
+  let imageryQuality: 'HIGH' | 'MEDIUM' | 'LOW';
 
   let playAnimation = true;
   let tick = 0;
@@ -120,6 +121,8 @@
         requestError = e as RequestError;
         return;
       }
+
+      imageryQuality = dataLayersResponse.imageryQuality;
 
       try {
         layer = await getLayer(layerId, dataLayersResponse, googleMapsApiKey);
@@ -225,7 +228,10 @@
       <Dropdown
         bind:value={layerId}
         options={dataLayerOptions}
-        onChange={async () => showDataLayer(true)}
+        onChange={async () => {
+          layer = undefined;
+          showDataLayer();
+        }}
       />
 
       {#if layerId == 'none'}
@@ -236,6 +242,19 @@
         {#if layer.id == 'hourlyShade'}
           <Calendar bind:month bind:day onChange={async () => showDataLayer()} />
         {/if}
+
+        <span class="outline-text label-medium">
+          {#if imageryQuality == 'HIGH'}
+            <p><b>Low altitude aerial imagery</b> available.</p>
+            <p>Imagery and DSM data were processed at <b>10 cm/pixel</b>.</p>
+          {:else if imageryQuality == 'MEDIUM'}
+            <p><b>AI augmented aerial imagery</b> available.</p>
+            <p>Imagery and DSM data were processed at <b>25 cm/pixel</b>.</p>
+          {:else if imageryQuality == 'LOW'}
+            <p><b>AI augmented aerial or satellite imagery</b> available.</p>
+            <p>Imagery and DSM data were processed at <b>50 cm/pixel</b>.</p>
+          {/if}
+        </span>
 
         <InputBool bind:value={showPanels} label="Solar panels" />
         <InputBool bind:value={showRoofOnly} label="Roof only" onChange={() => showDataLayer()} />

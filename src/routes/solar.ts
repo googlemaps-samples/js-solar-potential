@@ -5,7 +5,7 @@
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
 
-			https://www.apache.org/licenses/LICENSE-2.0
+      https://www.apache.org/licenses/LICENSE-2.0
 
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
@@ -133,7 +133,7 @@ export type LayerId = 'mask' | 'dsm' | 'rgb' | 'annualFlux' | 'monthlyFlux' | 'h
 // [START solar_api_building_insights]
 /**
  * Fetches the building insights information from the Solar API.
- *   https://developers.google.com/maps/documentation/solar/requests#make-building
+ *   https://developers.google.com/maps/documentation/solar/building-insights
  *
  * @param  {LatLng} location      Point of interest as latitude longitude.
  * @param  {string} apiKey        Google Cloud API key.
@@ -149,6 +149,7 @@ export async function findClosestBuilding(
   };
   console.log('GET buildingInsights\n', args);
   const params = new URLSearchParams({ ...args, key: apiKey });
+  // https://developers.google.com/maps/documentation/solar/reference/rest/v1/buildingInsights/findClosest
   return fetch(`https://solar.googleapis.com/v1/buildingInsights:findClosest?${params}`).then(
     async (response) => {
       const content = await response.json();
@@ -166,7 +167,7 @@ export async function findClosestBuilding(
 // [START solar_api_data_layers]
 /**
  * Fetches the data layers information from the Solar API.
- *   https://developers.google.com/maps/documentation/solar/requests#make-data
+ *   https://developers.google.com/maps/documentation/solar/data-layers
  *
  * @param  {LatLng} location      Point of interest as latitude longitude.
  * @param  {number} radiusMeters  Radius of the data layer size in meters.
@@ -182,9 +183,16 @@ export async function getDataLayerUrls(
     'location.latitude': location.latitude.toFixed(5),
     'location.longitude': location.longitude.toFixed(5),
     radius_meters: radiusMeters.toString(),
+    // The Solar API always returns the highest quality imagery available.
+    // By default the API asks for HIGH quality, which means that HIGH quality isn't available,
+    // but there is an existing MEDIUM or LOW quality, it won't return anything.
+    // Here we ask for *at least* LOW quality, but if there's a higher quality available,
+    // the Solar API will return us the highest quality available.
+    required_quality: 'LOW',
   };
   console.log('GET dataLayers\n', args);
   const params = new URLSearchParams({ ...args, key: apiKey });
+  // https://developers.google.com/maps/documentation/solar/reference/rest/v1/dataLayers/get
   return fetch(`https://solar.googleapis.com/v1/dataLayers:get?${params}`).then(
     async (response) => {
       const content = await response.json();
