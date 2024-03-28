@@ -245,11 +245,14 @@
 
         <span class="outline-text label-medium">
           {#if imageryQuality == 'HIGH'}
-            Imagery and DSM data were processed at <b>0.1 m/pixel</b>.
+            <p><b>Low altitude aerial imagery</b> available.</p>
+            <p>Imagery and DSM data were processed at <b>10 cm/pixel</b>.</p>
           {:else if imageryQuality == 'MEDIUM'}
-            Imagery and DSM data were processed at <b>0.25 m/pixel</b>.
+            <p><b>AI augmented aerial imagery</b> available.</p>
+            <p>Imagery and DSM data were processed at <b>25 cm/pixel</b>.</p>
           {:else if imageryQuality == 'LOW'}
-            Imagery and DSM data were processed at <b>0.5 m/pixel</b>.
+            <p><b>AI augmented aerial or satellite imagery</b> available.</p>
+            <p>Imagery and DSM data were processed at <b>50 cm/pixel</b>.</p>
           {/if}
         </span>
 
