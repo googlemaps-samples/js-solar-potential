@@ -9,7 +9,7 @@ This is a demo app that showcases and displays the information from the Solar AP
 
 ## Before you begin
 
-You need a Google Cloud project with a billing account and the Maps JavaScript API and Solar API enabled.
+You need a Google Cloud project with a billing account and the Maps JavaScript API, Solar API and Geocoding API enabled.
 
 To learn more, see [Set up in Cloud Console](https://developers.google.com/maps/documentation/javascript/cloud-setup).
 
