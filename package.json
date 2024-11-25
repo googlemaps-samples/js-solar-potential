@@ -24,7 +24,7 @@
     "@playwright/test": "^1.42.1",
     "@sveltejs/adapter-auto": "^3.2.0",
     "@sveltejs/adapter-node": "^3.0.3",
-    "@sveltejs/kit": "^2.5.4",
+    "@sveltejs/kit": "^2.8.3",
     "@sveltejs/vite-plugin-svelte": "^3.0.2",
     "@types/cookie": "^0.6.0",
     "@types/google.maps": "^3.55.5",
