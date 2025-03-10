@@ -24,8 +24,10 @@
 
   import SearchBar from './components/SearchBar.svelte';
   import Sections from './sections/Sections.svelte';
+  import { fetchWeatherData } from './weather';
 
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const weatherApiKey = import.meta.env.VITE_WEATHER_API_KEY;
   const defaultPlace = {
     name: 'Rinconada Library',
     address: '1213 Newell Rd, Palo Alto, CA 94303',
@@ -39,6 +41,7 @@
   let geometryLibrary: google.maps.GeometryLibrary;
   let mapsLibrary: google.maps.MapsLibrary;
   let placesLibrary: google.maps.PlacesLibrary;
+  let weatherData: any;
   onMount(async () => {
     // Load the Google Maps libraries.
     const loader = new Loader({ apiKey: googleMapsApiKey });
@@ -71,6 +74,9 @@
       streetViewControl: false,
       zoomControl: false,
     });
+
+    // Fetch and display weather data
+    weatherData = await fetchWeatherData(location.lat(), location.lng(), weatherApiKey);
   });
 </script>
 
@@ -107,6 +113,15 @@
 
       {#if location}
         <Sections {location} {map} {geometryLibrary} {googleMapsApiKey} />
+      {/if}
+
+      {#if weatherData}
+        <div class="p-4 surface-variant outline-text rounded-lg space-y-3">
+          <p><b>Weather Conditions:</b></p>
+          <p>Temperature: {weatherData.temperature}°C</p>
+          <p>Humidity: {weatherData.humidity}%</p>
+          <p>Cloud Cover: {weatherData.cloudCover}%</p>
+        </div>
       {/if}
 
       <div class="grow" />
