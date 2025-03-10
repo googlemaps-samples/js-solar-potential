@@ -14,7 +14,7 @@
  limitations under the License.
  -->
 
-<script lang="ts">
+ <script lang="ts">
   /* global google */
 
   import * as GMAPILoader from '@googlemaps/js-api-loader';
@@ -24,6 +24,7 @@
 
   import SearchBar from './components/SearchBar.svelte';
   import Sections from './sections/Sections.svelte';
+
 
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const defaultPlace = {
@@ -39,6 +40,68 @@
   let geometryLibrary: google.maps.GeometryLibrary;
   let mapsLibrary: google.maps.MapsLibrary;
   let placesLibrary: google.maps.PlacesLibrary;
+  let drawingManager: google.maps.drawing.DrawingManager;
+  let selectedPanel: google.maps.Rectangle | null = null;
+  let panels: google.maps.Rectangle[] = [];
+  const panelDimensions = {
+    width: 4, // meters - standard solar panel width
+    height: 2.1, // meters - standard solar panel height
+    spacing: 0.1 // meters - spacing between panels
+  };
+
+  // Add panel style configuration
+  const panelStyle = {
+    fillColor: '#1a237e', // Dark blue color for solar panels
+    fillOpacity: 0.9,
+    strokeWeight: 1,
+    strokeColor: '#ffffff', // White border
+    draggable: true,
+    clickable: true,
+    editable: false  // Disable resizing handles
+  };
+
+  const selectedPanelStyle = {
+    ...panelStyle,
+    strokeColor: '#FFD700', // Yellow highlight
+    strokeWeight: 1
+  };
+
+  // Add helper function to update panel styles
+  function updatePanelStyles(panel: google.maps.Rectangle, isSelected: boolean) {
+    const style = isSelected ? selectedPanelStyle : panelStyle;
+    panel.setOptions(style);
+  }
+
+  // Helper function to move panel in a specific direction
+  function movePanel(panel: google.maps.Rectangle, direction: 'left' | 'right' | 'up' | 'down') {
+    const bounds = panel.getBounds();
+    if (!bounds) return;
+    
+    const center = bounds.getCenter();
+    const moveDistance = panelDimensions.width; // Distance to move
+    
+    let bearing;
+    switch(direction) {
+      case 'left': bearing = -90; break;
+      case 'right': bearing = 90; break;
+      case 'up': bearing = 0; break;
+      case 'down': bearing = 180; break;
+    }
+    
+    const newCenter = google.maps.geometry.spherical.computeOffset(
+      center,
+      moveDistance,
+      bearing
+    );
+    
+    const newBounds = new google.maps.LatLngBounds(
+      google.maps.geometry.spherical.computeOffset(newCenter, -panelDimensions.height/2, 180),
+      google.maps.geometry.spherical.computeOffset(newCenter, panelDimensions.width/2, 90)
+    );
+    
+    panel.setBounds(newBounds);
+  }
+
   onMount(async () => {
     // Load the Google Maps libraries.
     const loader = new Loader({ apiKey: googleMapsApiKey });
@@ -46,6 +109,7 @@
       geometry: loader.importLibrary('geometry'),
       maps: loader.importLibrary('maps'),
       places: loader.importLibrary('places'),
+      drawing: loader.importLibrary('drawing'),
     };
     geometryLibrary = await libraries.geometry;
     mapsLibrary = await libraries.maps;
@@ -70,6 +134,53 @@
       rotateControl: false,
       streetViewControl: false,
       zoomControl: false,
+      draggableCursor: 'crosshair',
+    });
+
+    // Initialize drawing manager
+    drawingManager = new google.maps.drawing.DrawingManager({
+      drawingMode: null,
+      drawingControl: true,
+      drawingControlOptions: {
+        position: google.maps.ControlPosition.TOP_CENTER,
+        drawingModes: [google.maps.drawing.OverlayType.RECTANGLE],
+      },
+      rectangleOptions: panelStyle
+    });
+    
+    drawingManager.setMap(map);
+
+    // Handle new rectangle creation
+    google.maps.event.addListener(drawingManager, 'rectanglecomplete', (rectangle: google.maps.Rectangle) => {
+      const bounds = rectangle.getBounds();
+      if (bounds) {
+        const center = bounds.getCenter();
+        const newBounds = new google.maps.LatLngBounds(
+          google.maps.geometry.spherical.computeOffset(center, -panelDimensions.height/2, 180),
+          google.maps.geometry.spherical.computeOffset(center, panelDimensions.width/2, 90)
+        );
+        rectangle.setBounds(newBounds);
+      }
+
+      // Deselect previous panel
+      if (selectedPanel) {
+        updatePanelStyles(selectedPanel, false);
+      }
+      
+      updatePanelStyles(rectangle, true);
+      selectedPanel = rectangle;
+      panels.push(rectangle);
+
+      // Add click listener for selection
+      rectangle.addListener('click', () => {
+        if (selectedPanel) {
+          updatePanelStyles(selectedPanel, false);
+        }
+        selectedPanel = rectangle;
+        updatePanelStyles(rectangle, true);
+      });
+
+      drawingManager.setDrawingMode(null);
     });
   });
 </script>
@@ -109,6 +220,37 @@
         <Sections {location} {map} {geometryLibrary} {googleMapsApiKey} />
       {/if}
 
+      <!-- Add control buttons to the side panel -->
+      <div class="p-4 surface-variant outline-text rounded-lg space-y-3">
+        <button
+          class="primary-button"
+          on:click={() => drawingManager?.setDrawingMode(google.maps.drawing.OverlayType.RECTANGLE)}
+        >
+          Add Solar Panel
+        </button>
+        
+        {#if selectedPanel}
+          <div class="grid grid-cols-3 gap-2 mt-2">
+            <div></div>
+            <button class="control-button" on:click={() => selectedPanel && movePanel(selectedPanel, 'up')}>↑</button>
+            <div></div>
+            <button class="control-button" on:click={() => selectedPanel && movePanel(selectedPanel, 'left')}>←</button>
+            <button class="control-button" on:click={() => selectedPanel && movePanel(selectedPanel, 'down')}>↓</button>
+            <button class="control-button" on:click={() => selectedPanel && movePanel(selectedPanel, 'right')}>→</button>
+          </div>
+          <button
+            class="secondary-button"
+            on:click={() => {
+              selectedPanel?.setMap(null);
+              panels = panels.filter(panel => panel !== selectedPanel);
+              selectedPanel = null;
+            }}
+          >
+            Remove Selected Panel
+          </button>
+        {/if}
+      </div>
+
       <div class="grow" />
 
       <div class="flex flex-col items-center w-full">
@@ -127,3 +269,23 @@
     </div>
   </aside>
 </div>
+
+<style>
+.control-button {
+  padding: 8px;
+  background: #4a4a4a;
+  color: white;
+  border-radius: 4px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-button:hover {
+  background: #666666;
+}
+</style>
+
+
