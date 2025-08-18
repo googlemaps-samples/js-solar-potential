@@ -1,4 +1,4 @@
-[![Build](https://github.com/googlemaps-samples/js-solar-potential/actions/workflows/build.yml/badge.svg)](https://github.com/googlemaps-samples/js-solar-potential/actions/workflows/build.yml)
+delete[![Build](https://github.com/googlemaps-samples/js-solar-potential/actions/workflows/build.yml/badge.svg)](https://github.com/googlemaps-samples/js-solar-potential/actions/workflows/build.yml)
 [![Tests](https://github.com/googlemaps-samples/js-solar-potential/actions/workflows/tests.yml/badge.svg)](https://github.com/googlemaps-samples/js-solar-potential/actions/workflows/tests.yml)
 
 ![Contributors](https://img.shields.io/github/contributors/googlemaps-samples/js-solar-potential?color=green)
@@ -87,7 +87,7 @@ To fix any lint issues, use `npm run format` to automatically format all the cod
 
 ## Tech stack
 
-- [Solar API](https://developers.google.com/maps/documentation/solar/overview): Get solar panel configurations, solar potential, and data layers.
+- [repoSolar API](https://developers.google.com/maps/documentation/solar/overview): Get solar panel configurations, solar potential, and data layers.
 - [Google Maps](https://developers.google.com/maps/documentation/javascript/overview): Display a custom map with the Google Maps JavaScript API.
 - [Material Desgin 3](https://m3.material.io): Material Design 3 [web components](https://github.com/material-components/material-web#readme).
 - [SvelteKit](https://kit.svelte.dev): Compiler framework to develop declarative reactive web apps with [TypeScript](https://www.typescriptlang.org).
