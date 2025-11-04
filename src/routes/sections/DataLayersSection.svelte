@@ -114,7 +114,7 @@
         new google.maps.LatLng(ne.latitude, ne.longitude),
         new google.maps.LatLng(sw.latitude, sw.longitude),
       );
-      const radius = Math.ceil(diameter / 2);
+      const radius = Math.min(Math.ceil(diameter / 2), 1000);
       try {
         dataLayersResponse = await getDataLayerUrls(center, radius, googleMapsApiKey);
       } catch (e) {
