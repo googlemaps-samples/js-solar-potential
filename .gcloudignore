@@ -1,4 +1,4 @@
-.svelte-kit/
+RE/.svelte-kit/
 build/
 node_modules/
 tests/
