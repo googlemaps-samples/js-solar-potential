@@ -24,15 +24,15 @@
     "@playwright/test": "^1.42.1",
     "@sveltejs/adapter-auto": "^3.2.0",
     "@sveltejs/adapter-node": "^3.0.3",
-    "@sveltejs/kit": "^2.5.4",
-    "@sveltejs/vite-plugin-svelte": "^3.0.2",
+    "@sveltejs/kit": "^2.65.0",
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@types/cookie": "^0.6.0",
     "@types/google.maps": "^3.55.5",
     "@types/google.visualization": "^0.0.73",
     "@types/proj4": "^2.5.5",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "@vitest/coverage-v8": "^1.4.0",
+    "@vitest/coverage-v8": "^4.1.8",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
@@ -49,8 +49,8 @@
     "tailwindcss": "^3.4.3",
     "tslib": "^2.6.2",
     "typescript": "^5.4.3",
-    "vite": "^5.2.6",
-    "vitest": "^1.2.2"
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
   },
   "type": "module"
 }
